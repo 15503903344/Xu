@@ -1,0 +1,152 @@
+apply plugin: 'com.android.application'
+apply plugin: 'org.jetbrains.kotlin.plugin.compose'
+
+android {
+    def version = project.getProperties().get("version")
+    if (version == null || "unspecified".equalsIgnoreCase(version)) {
+        // 默认版本号；正式发布时由 CI 通过 -Pversion=<tag> 覆盖
+        version = "1.3.0"
+    }
+    project.ext.appVersion = version
+    def gitCommitHash = "unknown"
+    def gitBranchName = "unknown"
+    def gitCommitCount = 1
+    if (project.hasProperty("versionCode")) {
+        // 本地发版可显式指定：./gradlew assembleNormalRelease -PversionCode=2
+        gitCommitCount = project.property("versionCode").toString().toInteger()
+    }
+    try {
+        gitCommitHash = 'git rev-parse --short HEAD'.execute().text.trim()
+        gitBranchName = 'git rev-parse --abbrev-ref HEAD'.execute().text.trim()
+        if (!project.hasProperty("versionCode")) {
+            gitCommitCount = "git rev-list --count HEAD".execute().text.trim().toInteger()
+        }
+    } catch (Exception ignored) { }
+    def buildTime = new Date().format("yyyy-MM-dd HH:mm:ss", TimeZone.getTimeZone("Asia/Shanghai"))
+
+    compileSdk 37
+    namespace 'com.surexu.sesame'
+    defaultConfig {
+        applicationId "com.surexu.sesame"
+        minSdk 26
+        //noinspection ExpiredTargetSdkVersion
+        targetSdk 34
+        versionCode gitCommitCount
+        versionName version
+
+        buildConfigField "String", "GIT_COMMIT_HASH", "\"${gitCommitHash}\""
+        buildConfigField "String", "GIT_BRANCH_NAME", "\"${gitBranchName}\""
+        buildConfigField "String", "BUILD_TIME", "\"${buildTime}\""
+    }
+    buildFeatures {
+        buildConfig = true // 显式启用 BuildConfig
+        compose = true
+    }
+    ext {
+        applicationName = "Sure-Xu"
+        applicationType = "Normal"
+    }
+
+    // 签名配置：密钥与口令放在 app/keystore.properties（该文件不入版本库）
+    def keystorePropsFile = rootProject.file("app/keystore.properties")
+    def keystoreProps = new Properties()
+    if (keystorePropsFile.exists()) {
+        keystoreProps.load(new FileInputStream(keystorePropsFile))
+    }
+    signingConfigs {
+        release {
+            storeFile file(keystoreProps.getProperty("storeFile", "sesame-release.jks"))
+            storePassword keystoreProps.getProperty("storePassword", "")
+            keyAlias keystoreProps.getProperty("keyAlias", "")
+            keyPassword keystoreProps.getProperty("keyPassword", "")
+        }
+    }
+    flavorDimensions.add("default")
+    productFlavors {
+        normal {
+            dimension "default"
+            ext.applicationType = "Normal"
+        }
+    }
+    buildTypes {
+        release {
+            // 与上游 Sesame-M 对齐：开启 R8 代码压缩与资源裁剪，避免体积虚高
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // keystore.properties 与实际密钥库都在时用正式密钥签名；
+            // 否则退回 debug 签名（仅供本地验证，CI 发布仍由 apksigner 用正式密钥重签）
+            def releaseKeystore = file(keystoreProps.getProperty("storeFile", "sure-xu-release.p12"))
+            if (keystorePropsFile.exists() && releaseKeystore.exists()) {
+                signingConfig signingConfigs.release
+            } else {
+                signingConfig signingConfigs.debug
+            }
+        }
+    }
+    // ABI 拆分已关闭：每个 flavor 只出一个全架构包，与旧版发布惯例一致（3 个 flavor = 3 个 APK）
+    // 体积主要靠 R8 + 资源裁剪，ABI 拆分收益有限（约 0.4 MB），不再产出 arm64-v8a / armeabi-v7a 单独包
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['src/main/jniLibs']
+        }
+        // normal（双入口通吃）：modern(libxposed 102) + legacy(传统 ≤93) 源集合并，
+        // 同时携带传统 assets/xposed_init 与 libxposed META-INF/xposed 元数据；
+        // SesameApplication 仅由 src/normal/java 提供（modern/legacy 的副本已移除）
+        normal {
+            java.srcDirs += ['src/modern/java', 'src/legacy/java']
+            resources.srcDirs += ['src/modernResources']
+        }
+    }
+    packaging {
+        resources {
+            merges += "META-INF/xposed/**"
+        }
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+androidComponents {
+    onVariants(selector().withBuildType('release')) { variant ->
+        variant.outputs.each { output ->
+            def appType = 'Normal'
+            // 单包通吃：仅 Sure-Xu-Normal-<version>.apk
+            output.outputFileName.set("Sure-Xu-${appType}-${project.appVersion}.apk")
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.32'
+    annotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.32'
+    implementation 'com.elvishew:xlog:1.11.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+
+    // libxposed API 102 现代模块依赖：normal 双入口包使用
+    normalImplementation 'io.github.libxposed:service:102.0.0'
+    normalCompileOnly 'io.github.libxposed:api:102.0.0'
+
+    // 传统 Xposed API ≤93：compileOnly 由 libs/api-82.jar 提供
+    normalCompileOnly files('libs/api-82.jar')
+
+    normalImplementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.18.2'
+    normalImplementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.18.2'
+    normalImplementation group: 'com.fasterxml.jackson.core', name: 'jackson-annotations', version: '2.18.2'
+
+    // NanoHTTPD 核心依赖（最新稳定版）
+    implementation 'org.nanohttpd:nanohttpd:2.3.1'
+
+    // Kotlin + Compose（miuix UI 重构基础）
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:2.4.0"
+    implementation "androidx.activity:activity-compose:1.9.3"
+    implementation "top.yukonga.miuix.kmp:miuix-ui:0.9.3"
+    implementation "top.yukonga.miuix.kmp:miuix-preference:0.9.3"
+    implementation "androidx.compose.material:material-icons-extended:1.7.6"
+}

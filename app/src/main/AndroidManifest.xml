@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission
+        android:name="com.android.launcher.permission.INSTALL_SHORTCUT" />
+
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
+    <application
+        android:name=".SesameApplication"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:description="@string/module_description"
+        android:requestLegacyExternalStorage="true"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:theme="@style/AppTheme"
+        android:usesCleartextTraffic="true"
+        tools:targetApi="q">
+
+        <activity
+            android:name=".ui.miuix.MiuixMainActivity"
+            android:exported="true"
+            android:resizeableActivity="true"
+            tools:targetApi="n">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="de.robv.android.xposed.category.MODULE_SETTINGS" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".ui.miuix.MiuixSettingsActivity"
+            android:exported="true"
+            android:resizeableActivity="true"
+            tools:targetApi="n" />
+
+        <activity
+            android:name=".ui.miuix.MiuixGroupFieldsActivity"
+            android:exported="false"
+            android:resizeableActivity="true" />
+
+        <activity
+            android:name=".ui.miuix.MiuixSelectionEditActivity"
+            android:exported="false"
+            android:resizeableActivity="true" />
+
+        <activity
+            android:name=".ui.miuix.MiuixExtensionsActivity"
+            android:exported="true"
+            android:resizeableActivity="true"
+            tools:targetApi="n" />
+
+        <activity
+            android:name=".ui.miuix.MiuixLogViewerActivity"
+            android:exported="true"
+            android:resizeableActivity="true"
+            tools:targetApi="n" />
+
+        <activity
+            android:name=".ui.miuix.MiuixFriendStatsActivity"
+            android:exported="false"
+            android:resizeableActivity="true" />
+
+        <activity
+            android:name=".ui.miuix.MiuixAboutActivity"
+            android:exported="false"
+            android:resizeableActivity="true" />
+
+        <activity
+            android:name=".ui.miuix.PetChatActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@style/PetDialogTheme"
+            android:resizeableActivity="true" />
+
+        <activity
+            android:name=".ui.miuix.PetLauncherActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:theme="@style/PetDialogTheme" />
+
+        <service
+            android:name=".ui.miuix.PetFloatService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="pet_float_window" />
+        </service>
+
+        <activity-alias
+            android:name=".ui.MainActivityAlias"
+            android:enabled="true"
+            android:exported="true"
+            android:targetActivity="com.surexu.sesame.ui.miuix.MiuixMainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths" />
+        </provider>
+
+    </application>
+
+</manifest>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- 未来拟态纯白：窗口底色与状态栏/导航栏统一为纯白，避免启动白闪与色块割裂 -->
+    <style name="AppTheme" parent="@style/Theme.AppCompat.Light">
+        <!--Appbar背景色-->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <!--ToolBar上的Title颜色-->
+        <item name="titleTextColor">@color/textColorPrimary</item>
+        <item name="subtitleTextColor">#535E73</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:colorBackground">@color/background</item>
+        <item name="android:navigationBarColor">@color/background</item>
+        <item name="android:statusBarColor">@color/background</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+    <style name="MenuTheme">
+        <item name="android:textColorSecondary">@color/textColorPrimary</item>
+        <item name="android:colorBackground">@color/background</item>
+    </style>
+
+    <!-- 桌宠对话窗：悬浮窗点击后弹出的全屏透明 Activity，内部用 Compose 绘制浮起卡片 -->
+    <style name="PetDialogTheme" parent="@style/Theme.AppCompat.Light">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:colorBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>
