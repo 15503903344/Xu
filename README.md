@@ -1,8 +1,8 @@
 # Sure-Xu
 
-[![License](https://img.shields.io/github/license/755596985/Sure-Xu.svg)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/755596985/Sure-Xu)](https://github.com/755596985/Sure-Xu/releases)
-[![Downloads](https://img.shields.io/github/downloads/755596985/Sure-Xu/total)](https://github.com/755596985/Sure-Xu/releases)
+[![License](https://img.shields.io/github/license/yu1989324402/Xu.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/yu1989324402/Xu)](https://github.com/yu1989324402/Xu/releases)
+[![Downloads](https://img.shields.io/github/downloads/yu1989324402/Xu/total)](https://github.com/yu1989324402/Xu/releases)
 
 > **未来拟态 · 纯白视觉 · 一个 App 管住所有任务**
 
@@ -40,6 +40,13 @@ Sure-Xu 是一套面向支付宝芝麻粒生态的**免 root 自动化模块**�
 
 > 下单类与真实社交类任务不会代替用户执行，配置页日志会说明跳过原因。
 
+## 特色功能
+
+| 特性 | 说明 |
+| --- | --- |
+| AI 桌宠 | Q 版鲸鱼娘悬浮窗，7 态表情自主活动，可拖动置顶；点击展开对话窗，运行状态联动显隐，支持首页隐藏 |
+| 自动切号 | 多账号调度器按历史账号轮询切换（默认关闭，不影响常规执行）：任务全部空闲才切入、切入前 15s 探测、7200s 防风控冷却；支持静默轮切广播触发 |
+
 ## 抓包与日志
 
 「抓包记录」覆盖四条链路，用于接口调试与问题定位：
@@ -57,13 +64,13 @@ Sure-Xu 是一套面向支付宝芝麻粒生态的**免 root 自动化模块**�
 
 ## 下载
 
-最新版 **v2.0.14**（单包通吃，安装一个即可）：
+最新版 **v3.1.7**（单包通吃，安装一个即可）：
 
 | 版本 | 适用环境 | APK |
 | --- | --- | --- |
-| **Normal** | 单包双入口：libxposed API 102（LSPosed 等免 Root 新框架）+ 传统 Xposed API 82~93（`assets/xposed_init`，Root / 传统框架） | [Sure-Xu-Normal-2.0.14.apk](https://github.com/755596985/Sure-Xu/releases/download/v2.0.14/Sure-Xu-Normal-2.0.14.apk) |
+| **Normal** | 单包双入口：libxposed API 102（LSPosed 等免 Root 新框架）+ 传统 Xposed API 82~93（`assets/xposed_init`，Root / 传统框架） | [Sure-Xu-Normal-3.1.7.apk](https://github.com/yu1989324402/Xu/releases/download/v3.1.7/Sure-Xu-Normal-3.1.7.apk) |
 
-每个 APK 附带同名 `.sha256` 校验文件，全部版本见 [Releases](https://github.com/755596985/Sure-Xu/releases)。
+每个 APK 附带同名 `.sha256` 校验文件，全部版本见 [Releases](https://github.com/yu1989324402/Xu/releases)。
 
 ## 安装
 
@@ -87,8 +94,9 @@ Sure-Xu 是一套面向支付宝芝麻粒生态的**免 root 自动化模块**�
 
 ```bash
 # 环境：JDK 17+ / Android SDK（platforms;android-37、build-tools）
-./gradlew assembleNormalRelease
-# 产物：app/build/outputs/apk/normal/release/Sure-Xu-Normal-x.y.z.apk（已签名）
+# 使用本地预装 Gradle 发行版构建（勿用 ./gradlew wrapper，发行版下载易超时）
+gradle assembleNormalRelease -Pversion=3.1.7
+# 产物：app/build/outputs/apk/normal/release/Sure-Xu-Normal-3.1.7.apk（已签名）
 ```
 
 签名读取 `app/keystore.properties`（不入库，首次克隆后需自备）：
