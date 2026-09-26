@@ -32,6 +32,7 @@ import java.util.regex.Pattern;
 
 import com.surexu.sesame.util.XHelpers;
 import com.surexu.sesame.data.ConfigV2;
+import com.surexu.sesame.data.ModelField;
 import com.surexu.sesame.data.ModelFields;
 import com.surexu.sesame.data.ModelGroup;
 import com.surexu.sesame.data.RuntimeInfo;
@@ -1960,7 +1961,9 @@ public class AntForestV2 extends ModelTask {
             JSONObject energyGenerated = resultObject.getJSONObject("energyGenerated");
             int zulinshangpinliulan = energyGenerated.getInt("zulinshangpinliulan");
             Log.forest("绿色租赁🛍️完成[线上逛街]#产生[" + zulinshangpinliulan + "g能量]");
-            Toast.show("绿色租赁🛍️完成[线上逛街]#产生[" + zulinshangpinliulan + "g能量]");
+            if (isCollectEnergyToastEnabled()) {
+                Toast.show("绿色租赁🛍️完成[线上逛街]#产生[" + zulinshangpinliulan + "g能量]");
+            }
         } catch (Throwable t) {
             Log.err(TAG, "greenRent err:", t);
         }
@@ -2021,7 +2024,9 @@ public class AntForestV2 extends ModelTask {
                     if (data.optBoolean("canSendEnergy", false)) {
                         int receivedEnergyAmount = data.getInt("receivedEnergyAmount");
                         Log.forest("森林集市🛍️完成[线上逛街]#产生[" + receivedEnergyAmount + "g能量]");
-                        Toast.show("森林集市🛍️完成[线上逛街]#产生[" + receivedEnergyAmount + "g能量]");
+                        if (isCollectEnergyToastEnabled()) {
+                            Toast.show("森林集市🛍️完成[线上逛街]#产生[" + receivedEnergyAmount + "g能量]");
+                        }
                     }
                 }
             }
@@ -2579,7 +2584,9 @@ public class AntForestV2 extends ModelTask {
             }
             jo = new JSONObject(AntForestRpcCall.energyRainSettlement(sum, token));
             if (MessageUtil.checkResultCode(TAG, jo)) {
-                Toast.show("获得了[" + sum + "g]能量[能量雨]");
+                if (collectEnergyToast.getValue()) {
+                    Toast.show("获得了[" + sum + "g]能量[能量雨]");
+                }
                 Log.forest("收能量雨🌧️[" + sum + "g]");
                 totalCollected += sum;
                 Statistics.addData(Statistics.DataType.COLLECTED, sum);
@@ -2793,7 +2800,9 @@ public class AntForestV2 extends ModelTask {
                         logMsg.append("其他: ").append(String.join("/", otherAwards));
                     }
                     Log.forest(logMsg.toString());
-                    Toast.show(logMsg.toString());
+                    if (collectEnergyToast.getValue()) {
+                        Toast.show(logMsg.toString());
+                    }
 
                 }
 
@@ -4933,5 +4942,17 @@ public class AntForestV2 extends ModelTask {
         int WHACK_MODE_COMPATIBLE = 1;
         int WHACK_MODE_AGGRESSIVE = 2;
         String[] nickNames = {"关闭", "兼容模式", "激进模式"};
+    }
+
+    /** 收能量气泡提示开关（静态方法内读取） */
+    private static boolean isCollectEnergyToastEnabled() {
+        try {
+            ModelFields forest = ConfigV2.INSTANCE.getModelFieldsMap().get("AntForestV2");
+            if (forest == null) return true;
+            ModelField<?> f = forest.get("collectEnergyToast");
+            return f == null || Boolean.TRUE.equals(f.getValue());
+        } catch (Throwable t) {
+            return true;
+        }
     }
 }

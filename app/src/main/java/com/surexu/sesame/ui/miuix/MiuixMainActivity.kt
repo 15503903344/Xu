@@ -1380,7 +1380,7 @@ fun SettingsTab(activity: MiuixMainActivity) {
                 )
             }
         }
-        // 桌宠控制：开启悬浮窗 / 放到桌面（权限申请入口下方）
+        // 桌宠控制：开启悬浮窗（权限申请入口下方）
         var petRunning by remember { mutableStateOf(PetFloatService.isRunning(context)) }
         CardSwitchPreference(
             title = "开启悬浮窗",
@@ -1398,11 +1398,6 @@ fun SettingsTab(activity: MiuixMainActivity) {
                     petRunning = false
                 }
             }
-        )
-        CardArrowPreference(
-            title = "放到桌面",
-            summary = "添加鲸鱼娘快捷方式到桌面，点击即可开启悬浮窗",
-            onClick = { addToLauncher(context) }
         )
     }
     Spacer(Modifier.height(16.dp))

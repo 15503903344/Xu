@@ -131,11 +131,11 @@ fun AboutScreen(activity: MiuixAboutActivity) {
             ) {
                 ArrowPreference(
                     title = "在 GitHub 查看源码",
-                    onClick = { openWebUrl(activity, "https://github.com/755596985/Sure-Xu") }
+                    onClick = { openWebUrl(activity, "https://github.com/yu1989324402/Xu") }
                 )
                 ArrowPreference(
                     title = "下载最新版本",
-                    onClick = { openWebUrl(activity, "https://github.com/755596985/Sure-Xu/releases") }
+                    onClick = { openWebUrl(activity, "https://github.com/yu1989324402/Xu/releases") }
                 )
             }
             Spacer(Modifier.height(16.dp))

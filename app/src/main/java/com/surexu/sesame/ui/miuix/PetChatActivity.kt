@@ -97,7 +97,6 @@ private data class PetChatMsg(val text: String, val isUser: Boolean)
 private val PetPrimary = Color(0xFF2E6BFF)
 private val PetCyan = Color(0xFF0FA5A0)
 private val PetHairline = Color(0xFFE9EFF8)
-private val PetDim = Color(0xFF10151C)
 
 @Composable
 private fun PetChatScreen(
@@ -126,7 +125,6 @@ private fun PetChatScreen(
     Box(
         Modifier
             .fillMaxSize()
-            .background(PetDim)
             .clickable(enabled = false) {},
         contentAlignment = Alignment.Center
     ) {
