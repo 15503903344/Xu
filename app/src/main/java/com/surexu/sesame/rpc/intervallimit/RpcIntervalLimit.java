@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class RpcIntervalLimit {
 
-    private static final IntervalLimit defaultIntervalLimit = new DefaultIntervalLimit(50);
+    private static final IntervalLimit defaultIntervalLimit = new DefaultIntervalLimit(200);
 
     private static final Map<String, IntervalLimit> intervalLimitMap = new ConcurrentHashMap<>();
 

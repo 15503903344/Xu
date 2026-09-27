@@ -44,8 +44,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.surexu.sesame.R
@@ -111,7 +114,10 @@ private fun PetChatScreen(
     }
     var input by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
+    var dragOffsetX by remember { mutableStateOf(0f) }
+    var dragOffsetY by remember { mutableStateOf(0f) }
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
+    val dm = LocalContext.current.resources.displayMetrics
 
     // 思考中的小圆点呼吸动画
     val dotTransition = rememberInfiniteTransition(label = "pet_thinking_dots")

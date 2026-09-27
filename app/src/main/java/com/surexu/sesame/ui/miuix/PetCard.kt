@@ -45,11 +45,16 @@ import com.surexu.sesame.data.Model
 import com.surexu.sesame.data.ModelConfig
 import com.surexu.sesame.data.modelFieldExt.SelectOneModelField
 import com.surexu.sesame.model.normal.answerAI.CustomAI
+import com.surexu.sesame.util.FileUtil
 import com.surexu.sesame.util.Log
+import com.surexu.sesame.util.Statistics
 import com.surexu.sesame.util.StringUtil
 import org.json.JSONArray
 import org.json.JSONObject
 import top.yukonga.miuix.kmp.basic.Text
+import java.io.File
+import java.io.RandomAccessFile
+import java.util.Calendar
 import kotlin.math.roundToInt
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -183,21 +188,23 @@ object PetEngine {
         if (ai == null) {
             return "还没有配置 AI 连接，请先到「配置-其他-自定义AI」填写接口地址、模型名、令牌再试。"
         }
-        val prompt = buildPrompt(buildFieldDict(), instruction)
+        val prompt = buildPrompt(buildFieldDict(), buildTodaySummary(context), instruction)
         val raw = ai.getAnswerStr(prompt)
         if (raw.isNullOrBlank()) {
             return "AI 请求失败，请检查「自定义AI」配置是否可用。"
         }
+        val clean = stripCodeFence(raw)
         return try {
-            val obj = JSONObject(raw)
-            if (obj.has("err")) {
-                "肥肥没听懂：" + obj.optString("err")
-            } else {
-                applyCommand(context, obj, userId)
+            val obj = JSONObject(clean)
+            when {
+                obj.has("err") -> "肥肥没听懂：" + obj.optString("err")
+                obj.has("m") && obj.has("f") -> applyCommand(context, obj, userId)
+                // JSON 但既非指令也非 err：按文本展示兜底
+                else -> clean
             }
         } catch (e: Exception) {
-            Log.err("PetEngine", "LLM 返回非 JSON:" + raw, e)
-            "肥肥回答格式不对，请换种说法再试。"
+            // 非 JSON：视为普通闲聊/建议回复，直接展示
+            clean
         }
     }
 
@@ -240,17 +247,81 @@ object PetEngine {
         return arr.toString()
     }
 
-    private fun buildPrompt(dict: String, instruction: String): String {
-        return "你是Sure-Xu模块的桌宠大肥鱼「肥肥」。用户会用中文让你修改模块配置。\n" +
+    private fun buildPrompt(dict: String, summary: String, instruction: String): String {
+        return "你是Sure-Xu模块的桌宠大肥鱼「肥肥」，性格活泼可爱，用中文回复用户。\n" +
                 "模块配置项字典（m=模块,f=字段,n=名称,t=类型,v=当前值,o=选项id|名称）：\n" +
                 dict + "\n\n" +
+                "今日运行摘要（用户问今天做了哪些任务、收了多少能量时，结合它回答）：\n" +
+                summary + "\n\n" +
                 "用户指令：" + instruction + "\n\n" +
-                "规则：\n" +
-                "1. 把指令映射到唯一配置项，只输出一个 JSON 对象：{\"m\":\"模块\",\"f\":\"字段\",\"v\":值}\n" +
-                "2. 类型对应：BOOLEAN→true/false；INTEGER/MULTIPLY_INTEGER→整数；STRING/TEXT/READ_TEXT/URL_TEXT→字符串；SELECT_ONE→选项id（从 o 中选）\n" +
-                "3. 类型是 SELECT/SELECT_AND_COUNT/SELECT_AND_COUNT_ONE/CHOICE/LIST/EMPTY 的字段不要改，输出 {\"err\":\"简短中文说明\"}\n" +
-                "4. 指令模糊、找不到对应项或拿不准时输出 {\"err\":\"简短中文说明\"}\n" +
-                "只输出 JSON，不要任何多余文字。"
+                "输出规则（三选一，只输出一个结果，不要多余文字）：\n" +
+                "1. 如果用户是在要求修改某个配置项：只输出一个 JSON 对象 {\"m\":\"模块\",\"f\":\"字段\",\"v\":值}\n" +
+                "   类型对应：BOOLEAN→true/false；INTEGER/MULTIPLY_INTEGER→整数；STRING/TEXT/READ_TEXT/URL_TEXT→字符串；SELECT_ONE→选项id（从 o 中选）\n" +
+                "2. 如果用户想改的是 SELECT/SELECT_AND_COUNT/SELECT_AND_COUNT_ONE/CHOICE/LIST/EMPTY 类型字段，或指令模糊找不到对应项：输出 {\"err\":\"简短中文说明\"}\n" +
+                "3. 其他情况（闲聊、问候、问设置建议、问今日任务/能量统计、问模块功能等）：直接用中文自然语言回答，不要输出 JSON；\n" +
+                "   回答今日任务/能量时结合今日运行摘要总结，数据缺失就如实说明。"
+    }
+
+    /** 组装今日运行摘要：能量统计 + 今日运行日志尾部（供 LLM 回答总结类问题）。 */
+    private fun buildTodaySummary(context: Context): String {
+        val sb = StringBuilder()
+        try {
+            Statistics.load()
+            Statistics.updateDay(Calendar.getInstance())
+            sb.append("【能量统计·今日】收 ")
+                .append(Statistics.getData(Statistics.TimeType.DAY, Statistics.DataType.COLLECTED))
+                .append("，帮收 ")
+                .append(Statistics.getData(Statistics.TimeType.DAY, Statistics.DataType.HELPED))
+                .append("，浇水 ")
+                .append(Statistics.getData(Statistics.TimeType.DAY, Statistics.DataType.WATERED))
+                .append("，被浇 ")
+                .append(Statistics.getData(Statistics.TimeType.DAY, Statistics.DataType.WATEREDCOUNT))
+                .append("，浇树 ")
+                .append(Statistics.getData(Statistics.TimeType.DAY, Statistics.DataType.WATERINGCOUNT))
+                .append(" 次\n")
+        } catch (t: Throwable) {
+            Log.printStackTrace(t)
+            sb.append("【能量统计·今日】暂不可用\n")
+        }
+        try {
+            val logTail = readLogTail(FileUtil.getRuntimeLogFile(), 256L * 1024L)
+            val lines = logTail.lineSequence().toList().takeLast(120)
+            if (lines.isNotEmpty()) {
+                sb.append("【今日运行日志·末尾摘要】\n")
+                lines.forEach { sb.append(it).append('\n') }
+            } else {
+                sb.append("【今日运行日志】暂无记录\n")
+            }
+        } catch (t: Throwable) {
+            Log.printStackTrace(t)
+            sb.append("【今日运行日志】读取失败\n")
+        }
+        return sb.toString()
+    }
+
+    /** 从文件尾部读取文本（避免大日志全量加载），实现与日志查看器一致。 */
+    private fun readLogTail(file: File, maxBytes: Long): String {
+        val length = file.length()
+        if (length <= 0L) return ""
+        val start = maxOf(0L, length - maxBytes)
+        RandomAccessFile(file, "r").use { raf ->
+            raf.seek(start)
+            val bytes = ByteArray((length - start).toInt())
+            raf.readFully(bytes)
+            var text = String(bytes, Charsets.UTF_8)
+            if (start > 0L) {
+                val idx = text.indexOf('\n')
+                text = if (idx >= 0) text.substring(idx + 1) else ""
+            }
+            return text
+        }
+    }
+
+    /** 去掉 LLM 回复外层可能的 ```json ``` 代码块围栏。 */
+    private fun stripCodeFence(raw: String): String {
+        val trimmed = raw.trim()
+        val fence = Regex("^```(?:json|JSON)?\\s*\\n?|\\n?```\\s*$")
+        return fence.replace(trimmed, "").trim()
     }
 
     /** 执行配置修改并保存广播。 */

@@ -7,7 +7,7 @@ public class RandomUtil {
     private static final Random rnd = new Random();
     
     public static int delay() {
-        return nextInt(100, 300);
+        return nextInt(300, 800);
     }
     
     public static int nextInt(int min, int max) {

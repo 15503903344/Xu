@@ -257,7 +257,7 @@ public abstract class ModelTask extends Model {
                     if (((ModelTask) model).startTask(force)) {
                         // 带代际检查的睡眠：停止时在下一个边界结束整轮（未绑定时同 Thread.sleep）
                         try {
-                            TimeUtil.sleep(750);
+                            TimeUtil.sleep(1500);
                         } catch (TaskCancelledException e) {
                             return;
                         }
