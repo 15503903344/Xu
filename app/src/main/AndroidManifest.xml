@@ -6,11 +6,6 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <uses-permission
-        android:name="com.android.launcher.permission.INSTALL_SHORTCUT" />
 
     <uses-permission
         android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
@@ -83,22 +78,6 @@
             android:launchMode="singleTop"
             android:theme="@style/PetDialogTheme"
             android:resizeableActivity="true" />
-
-        <activity
-            android:name=".ui.miuix.PetLauncherActivity"
-            android:exported="false"
-            android:excludeFromRecents="true"
-            android:launchMode="singleInstance"
-            android:theme="@style/PetDialogTheme" />
-
-        <service
-            android:name=".ui.miuix.PetFloatService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="pet_float_window" />
-        </service>
 
         <activity-alias
             android:name=".ui.MainActivityAlias"

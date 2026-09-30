@@ -658,6 +658,13 @@ public class AntFarm extends ModelTask {
     private void autoFeedAnimal() {
         syncAnimalStatus(ownerFarmId);
         if (!AnimalFeedStatus.EATING.name().equals(ownerAnimal.animalFeedStatus)) {
+            // 状态不是吃食中（接口失败仍显示饥饿/睡觉/离家等）：安排短延迟重查，
+            // 避免「喂一次后蹲点链路断裂、要等下一轮模块轮询才恢复」的不自动喂鸡。
+            long retryTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(30);
+            String retryTaskId = "UPDATE|FA|" + ownerFarmId;
+            if (!hasChildTask(retryTaskId)) {
+                addChildTask(new ChildModelTask(retryTaskId, "UPDATE", this::autoFeedAnimal, retryTime));
+            }
             return;
         }
         double foodHaveEatten = 0d;
@@ -667,7 +674,14 @@ public class AntFarm extends ModelTask {
             foodHaveEatten += (nowTime - animal.startEatTime) / 1000 * animal.consumeSpeed;
             consumeSpeed += animal.consumeSpeed;
         }
-        long nextFeedTime = nowTime + (long) ((foodInTrough - foodHaveEatten) / consumeSpeed) * 1000;
+        // 防御：consumeSpeed 缺失/为 0 时无法估算剩余进食时长，退化为 30 秒后重查，避免生成异常蹲点时间
+        long nextFeedTime;
+        if (consumeSpeed <= 0d) {
+            nextFeedTime = nowTime + TimeUnit.SECONDS.toMillis(30);
+        } else {
+            long remainMs = (long) ((foodInTrough - foodHaveEatten) / consumeSpeed * 1000);
+            nextFeedTime = remainMs > 0 ? nowTime + remainMs : nowTime + TimeUnit.SECONDS.toMillis(30);
+        }
         String taskId = "FA|" + ownerFarmId;
         if (hasChildTask(taskId)) {
             removeChildTask(taskId);

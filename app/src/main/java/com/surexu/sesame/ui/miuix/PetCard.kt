@@ -2,10 +2,6 @@ package com.surexu.sesame.ui.miuix
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.net.Uri
-import android.provider.Settings
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -36,9 +32,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.pm.ShortcutInfoCompat
-import androidx.core.content.pm.ShortcutManagerCompat
-import androidx.core.graphics.drawable.IconCompat
 import com.surexu.sesame.R
 import com.surexu.sesame.data.ConfigV2
 import com.surexu.sesame.data.Model
@@ -59,14 +52,11 @@ import kotlin.math.roundToInt
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
- * 首页桌宠展示位：一言下方 Q 版鲸鱼娘（同悬浮窗形态），会自己上下浮动 + 轻微摇摆，
- * 支持拖动移动位置；点击进入对话窗。控制入口（开启悬浮窗）在首页「设置-系统设置」。
- *
- * @param running 悬浮窗是否运行中：为 true 时首页不再绘制鲸鱼娘，避免与桌面悬浮窗重复。
+ * 首页桌宠展示位：一言下方 Q 版鲸鱼娘，会自己上下浮动 + 轻微摇摆，
+ * 支持拖动移动位置；点击进入对话窗。
  */
 @Composable
-fun PetHomeImage(running: Boolean = false) {
-    if (running) return
+fun PetHomeImage() {
     val context = LocalContext.current
     val transition = rememberInfiniteTransition(label = "pet_home")
     val floatY by transition.animateFloat(
@@ -115,68 +105,9 @@ fun PetHomeImage(running: Boolean = false) {
     }
 }
 
-/** 跳系统悬浮窗授权页。 */
-internal fun openOverlaySettings(context: Context) {
-    try {
-        val intent = Intent(
-            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-            Uri.parse("package:" + context.packageName)
-        )
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
-    } catch (t: Throwable) {
-        Log.printStackTrace(t)
-    }
-}
-
-/** 创建桌面快捷方式：点击图标直接拉起悬浮窗桌宠。 */
-internal fun addToLauncher(context: Context) {
-    try {
-        val launcherIntent = Intent(context, PetLauncherActivity::class.java)
-            .setAction(Intent.ACTION_MAIN)
-        val shortcut = ShortcutInfoCompat.Builder(context, "pet_float")
-            .setShortLabel("大肥鱼")
-            .setLongLabel("大肥鱼桌宠")
-            .setIcon(IconCompat.createWithBitmap(loadFishIcon(context)))
-            .setIntent(launcherIntent)
-            .build()
-        if (ShortcutManagerCompat.requestPinShortcut(context, shortcut, null)) {
-            // 系统弹「已添加」提示，无需额外文案
-        } else {
-            // 部分桌面不支持 pin 快捷方式：退回发送 INSTALL_SHORTCUT 广播
-            sendInstallShortcutBroadcast(context)
-        }
-    } catch (t: Throwable) {
-        Log.printStackTrace(t)
-    }
-}
-
-/** 兜底方案：传统 INSTALL_SHORTCUT 广播（老桌面兼容）。 */
-private fun sendInstallShortcutBroadcast(context: Context) {
-    val intent = Intent("com.android.launcher.action.INSTALL_SHORTCUT")
-    intent.putExtra(Intent.EXTRA_SHORTCUT_NAME, "大肥鱼桌宠")
-    intent.putExtra(Intent.EXTRA_SHORTCUT_ICON, loadFishIcon(context))
-    val launch = Intent(context, PetLauncherActivity::class.java)
-        .setAction(Intent.ACTION_MAIN)
-    intent.putExtra(Intent.EXTRA_SHORTCUT_INTENT, launch)
-    intent.putExtra("duplicate", false)
-    context.sendBroadcast(intent)
-}
-
-/** 把鱼素材转成桌面图标 Bitmap。 */
-private fun loadFishIcon(context: Context): Bitmap {
-    val drawable = context.resources.getDrawable(R.drawable.pet_fish, null)
-    val size = (96 * context.resources.displayMetrics.density).toInt()
-    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(bitmap)
-    drawable.setBounds(0, 0, size, size)
-    drawable.draw(canvas)
-    return bitmap
-}
-
 /**
  * 桌宠引擎：组装字段字典 -> 调自定义 AI -> 解析 JSON -> 写配置 -> 保存并广播重启。
- * 悬浮窗对话（PetChatActivity）与首页入口共用。
+ * 首页对话窗（PetChatActivity）入口共用。
  */
 object PetEngine {
 

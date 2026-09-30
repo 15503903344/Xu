@@ -147,9 +147,6 @@ class MiuixMainActivity : MiuixBaseActivity() {
     /** 统计版本号：刷新后自增，首页统计订阅它触发重组 */
     var statisticsVersion by mutableStateOf(0)
 
-    /** 悬浮窗桌宠是否运行中：onResume 刷新，首页据此隐藏 Q 版鲸鱼娘展示位，避免与悬浮窗重复 */
-    var petRunning by mutableStateOf(false)
-
     /** 是否已请求过系统文件权限，用于 onResume 检测授权返回 */
     var hasRequestedPermission by mutableStateOf(false)
 
@@ -258,8 +255,6 @@ class MiuixMainActivity : MiuixBaseActivity() {
             handler.postDelayed(titleRunner, 3000)
         }
         checkPermissionAndRefresh()
-        // 悬浮窗运行态刷新：开着悬浮窗时首页不再保留鲸鱼娘展示位
-        petRunning = PetFloatService.isRunning(this)
     }
 
     /** 检查文件权限，若已授权则刷新统计；同时处理首次请求权限的场景 */
@@ -545,9 +540,8 @@ fun HomeTab(activity: MiuixMainActivity) {
     HitokotoCard()
     Spacer(Modifier.height(16.dp))
 
-    // Q版鲸鱼娘桌宠展示位：一言下方留形象，会自己动、可拖动，点击进对话；悬浮窗/桌面控制移至「设置-系统设置」。
-    // 悬浮窗运行中(running=true)时隐藏该展示位，避免桌面与首页出现两只鲸鱼娘。
-    PetHomeImage(running = activity.petRunning)
+    // Q版鲸鱼娘桌宠展示位：一言下方留形象，会自己动、可拖动，点击进对话。
+    PetHomeImage()
     Spacer(Modifier.height(16.dp))
 }
 
@@ -1053,9 +1047,19 @@ fun ConfigTab(activity: MiuixMainActivity) {
         if (uri != null) {
             val file = ConfigPreload.getConfigFile(selectedUserId)
             try {
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    file.outputStream().use { input.copyTo(it) }
+                val content = context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
+                if (content.isNullOrBlank()) {
+                    ToastUtil.show(context, "导入失败：文件为空")
+                    return@rememberLauncherForActivityResult
                 }
+                // 预校验 JSON 语法：坏文件直接拒绝，避免误报“导入成功”却由 ConfigV2.load 回退成备份旧配置
+                try {
+                    com.fasterxml.jackson.databind.ObjectMapper().readTree(content)
+                } catch (e: Exception) {
+                    ToastUtil.show(context, "导入失败：配置文件格式错误")
+                    return@rememberLauncherForActivityResult
+                }
+                file.outputStream().use { it.write(content.toByteArray(Charsets.UTF_8)) }
                 // 导入后通知支付宝进程重载；userId 为空表示默认账号，也要发广播（不带 extra 即可命中当前进程）
                 try {
                     val intent = Intent("com.eg.android.AlipayGphone.sesame.restart")
@@ -1316,6 +1320,10 @@ fun SettingsTab(activity: MiuixMainActivity) {
     SmallTitle(text = "功能设置")
     CardList {
         CardArrowPreference(
+            title = "配置设置",
+            onClick = { context.startActivity(Intent(context, MiuixSettingsActivity::class.java)) }
+        )
+        CardArrowPreference(
             title = "好友统计",
             onClick = { context.startActivity(Intent(context, MiuixFriendStatsActivity::class.java)) }
         )
@@ -1380,25 +1388,6 @@ fun SettingsTab(activity: MiuixMainActivity) {
                 )
             }
         }
-        // 桌宠控制：开启悬浮窗（权限申请入口下方）
-        var petRunning by remember { mutableStateOf(PetFloatService.isRunning(context)) }
-        CardSwitchPreference(
-            title = "开启悬浮窗",
-            summary = if (petRunning) "悬浮窗运行中，长按可拖动" else "Q版鲸鱼娘悬浮窗，开悬浮窗就能放出来",
-            checked = petRunning,
-            onCheckedChange = { on ->
-                if (on) {
-                    if (!PetFloatService.canOverlay(context)) {
-                        openOverlaySettings(context)
-                    } else {
-                        petRunning = PetFloatService.start(context)
-                    }
-                } else {
-                    context.stopService(Intent(context, PetFloatService::class.java))
-                    petRunning = false
-                }
-            }
-        )
     }
     Spacer(Modifier.height(16.dp))
 

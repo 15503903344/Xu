@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.surexu.sesame.data.TokenConfig
+import com.surexu.sesame.util.FileUtil
 import com.surexu.sesame.util.ToastUtil
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
@@ -35,7 +36,45 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+
+// ============ 自动切号配置（独立于 ConfigV2 的 account_switch_settings.json）============
+private val accountSwitchFile: java.io.File
+    get() = java.io.File(FileUtil.MAIN_DIRECTORY_FILE, "account_switch_settings.json")
+
+/** 读取自动切号配置：enabled / intervalSeconds(秒) / activation */
+private fun readAccountSwitchSettings(): Triple<Boolean, Int, Long> {
+    return try {
+        val file = accountSwitchFile
+        if (file.isFile && file.length() <= 16384) {
+            val text = file.readText()
+            val json = if (text.isEmpty()) org.json.JSONObject() else org.json.JSONObject(text)
+            val enabled = json.optBoolean("enabled", false)
+            val seconds = json.optInt("intervalSeconds", 7200).coerceIn(15, 86400)
+            val activation = json.optLong("activation", 0L)
+            Triple(enabled, seconds, activation)
+        } else {
+            Triple(false, 7200, 0L)
+        }
+    } catch (e: Exception) {
+        Triple(false, 7200, 0L)
+    }
+}
+
+/** 写入自动切号配置；intervalSeconds 按切号侧约束夹紧到 15~86400 秒 */
+private fun writeAccountSwitchSettings(enabled: Boolean, seconds: Int, activation: Long): Boolean {
+    return try {
+        val json = org.json.JSONObject()
+        json.put("enabled", enabled)
+        json.put("intervalSeconds", seconds.coerceIn(15, 86400))
+        json.put("activation", activation)
+        accountSwitchFile.writeText(json.toString())
+        true
+    } catch (e: Exception) {
+        false
+    }
+}
 
 class MiuixExtensionsActivity : MiuixBaseActivity() {
 
@@ -111,6 +150,77 @@ fun ExtensionsScreen(activity: MiuixExtensionsActivity) {
                     title = "设置自定义走路路径(queue)",
                     onClick = { inputMode = "queue"; inputText = "" }
                 )
+            }
+            Spacer(Modifier.height(12.dp))
+
+            SmallTitle(text = "自动切号")
+            CardList {
+                val initial = remember { readAccountSwitchSettings() }
+                var switchEnabled by remember { mutableStateOf(initial.first) }
+                var intervalSeconds by remember { mutableStateOf(initial.second) }
+                var activation by remember { mutableStateOf(initial.third) }
+                var showIntervalDialog by remember { mutableStateOf(false) }
+
+                SwitchPreference(
+                    title = "启用自动切号",
+                    summary = "按间隔自动轮换登录的支付宝账号",
+                    checked = switchEnabled,
+                    onCheckedChange = { on ->
+                        if (writeAccountSwitchSettings(on, intervalSeconds, activation)) {
+                            switchEnabled = on
+                            ToastUtil.show(context, if (on) "自动切号已开启" else "自动切号已关闭")
+                        } else {
+                            ToastUtil.show(context, "保存失败")
+                        }
+                    }
+                )
+                CardArrowPreference(
+                    title = "切换间隔",
+                    summary = "每 ${intervalSeconds / 60} 分钟切换一次",
+                    onClick = { showIntervalDialog = true }
+                )
+                if (showIntervalDialog) {
+                    var minutesText by remember { mutableStateOf((intervalSeconds / 60).toString()) }
+                    Dialog(onDismissRequest = { showIntervalDialog = false }) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .background(MiuixTheme.colorScheme.surface, RoundedCornerShape(16.dp))
+                                .padding(16.dp)
+                        ) {
+                            Column {
+                                Text("切换间隔（分钟）", color = MiuixTheme.colorScheme.onBackground)
+                                Spacer(Modifier.height(8.dp))
+                                TextField(
+                                    value = minutesText,
+                                    onValueChange = { minutesText = it },
+                                    label = "分钟",
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                    TextButton(text = "取消", onClick = { showIntervalDialog = false })
+                                    Spacer(Modifier.width(8.dp))
+                                    TextButton(text = "保存", onClick = {
+                                        val minutes = minutesText.trim().toIntOrNull()
+                                        if (minutes == null || minutes < 1 || minutes > 1440) {
+                                            ToastUtil.show(context, "请输入 1~1440 分钟的整数")
+                                        } else {
+                                            val newSeconds = (minutes * 60).coerceIn(15, 86400)
+                                            if (writeAccountSwitchSettings(switchEnabled, newSeconds, activation)) {
+                                                intervalSeconds = newSeconds
+                                                showIntervalDialog = false
+                                                ToastUtil.show(context, "间隔已更新")
+                                            } else {
+                                                ToastUtil.show(context, "保存失败")
+                                            }
+                                        }
+                                    })
+                                }
+                            }
+                        }
+                    }
+                }
             }
             Spacer(Modifier.height(12.dp))
 

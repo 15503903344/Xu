@@ -151,9 +151,19 @@ fun SettingsContent(activity: MiuixSettingsActivity, userId: String?) {
         if (uri != null) {
             val file = ConfigPreload.getConfigFile(userId)
             try {
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    file.outputStream().use { input.copyTo(it) }
+                val content = context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
+                if (content.isNullOrBlank()) {
+                    ToastUtil.show(context, "导入失败：文件为空")
+                    return@rememberLauncherForActivityResult
                 }
+                // 预校验 JSON 语法：坏文件直接拒绝，避免误报“导入成功”却由 ConfigV2.load 回退成备份旧配置
+                try {
+                    com.fasterxml.jackson.databind.ObjectMapper().readTree(content)
+                } catch (e: Exception) {
+                    ToastUtil.show(context, "导入失败：配置文件格式错误")
+                    return@rememberLauncherForActivityResult
+                }
+                file.outputStream().use { it.write(content.toByteArray(Charsets.UTF_8)) }
                 // 导入后通知支付宝进程重载；userId 为空表示默认账号，也要发广播（不带 extra 即可命中当前进程）
                 try {
                     val intent = Intent("com.eg.android.AlipayGphone.sesame.restart")
@@ -219,6 +229,8 @@ fun SettingsContent(activity: MiuixSettingsActivity, userId: String?) {
                         showDeleteDialog = false
                         if (ConfigPreload.getConfigFile(userId).let { com.surexu.sesame.util.FileUtil.deleteFile(it) }) {
                             ToastUtil.show(context, "配置删除成功")
+                            // 清掉内存中的旧配置与预加载标记，防止同进程再进配置页时旧值“复活”被重新写盘
+                            ConfigPreload.clear()
                         }
                         activity.finish()
                     },

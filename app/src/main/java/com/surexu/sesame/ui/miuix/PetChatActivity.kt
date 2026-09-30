@@ -65,7 +65,6 @@ class PetChatActivity : MiuixBaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        PetFloatService.setState(this, PetFloatService.STATE_THINKING)
         setAppContent {
             PetChatScreen(
                 context = this,
@@ -77,7 +76,6 @@ class PetChatActivity : MiuixBaseActivity() {
 
     override fun onStop() {
         super.onStop()
-        PetFloatService.setState(this, PetFloatService.STATE_IDLE)
     }
 
     /** 读取最近选中的账号（与首页一致），无则用默认账号。 */
@@ -250,18 +248,11 @@ private fun PetChatScreen(
                             input = ""
                             messages.add(PetChatMsg(text, true))
                             loading = true
-                            PetFloatService.setState(context, PetFloatService.STATE_WAITING)
                             Thread {
                                 val reply = PetEngine.handle(context.applicationContext, text, userId)
                                 mainHandler.post {
                                     messages.add(PetChatMsg(reply, false))
                                     loading = false
-                                    val bad = reply.contains("错误") || reply.contains("失败") ||
-                                        reply.contains("不支持") || reply.contains("没听懂")
-                                    PetFloatService.setState(
-                                        context,
-                                        if (bad) PetFloatService.STATE_ANGRY else PetFloatService.STATE_IDLE
-                                    )
                                 }
                             }.start()
                         },

@@ -67,11 +67,9 @@ public abstract class ModelTask extends Model {
             // 静音计数分层：记下上层残留，本轮只统计自己这段
             int droppedPrev = Log.takeDroppedStaleLogCount();
             // 与执行槽配对：只有真正拿到槽的线程才计入 runningCount
-            boolean isFirst = NotificationUtil.getRunningCount() == 0;
             NotificationUtil.trackTaskStart();
-            if (isFirst) {
-                NotificationUtil.setStatusTextExec();
-            }
+            // 每次任务起跑都刷新通知，显示当前正在执行的任务名（并行时以最新起跑的为准）
+            NotificationUtil.setStatusTextExec(task.getName());
             Log.record("执行开始-" + task.getName());
             Log.startModuleLogCount();
             try {

@@ -100,6 +100,18 @@ public final class ConfigPreload {
         configLoaded = true;
     }
 
+    /**
+     * 清除预加载状态与 ConfigV2 内存（删除配置后调用）。
+     * 否则 configLoaded 仍为 true、内存旧值还在，同进程再次进入配置页不会重载，
+     * 改动任意字段保存时会把整份旧配置重新写盘，表现为「删除的配置复活」。
+     */
+    public static void clear() {
+        configLoaded = false;
+        lastPreparedUserId = null;
+        ConfigV2.INSTANCE.setModelFieldsMap(null);
+        ConfigV2.unload();
+    }
+
     public static boolean isEmpty(String userId) {
         return StringUtil.isEmpty(userId);
     }

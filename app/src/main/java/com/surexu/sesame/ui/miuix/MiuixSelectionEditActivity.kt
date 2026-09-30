@@ -217,7 +217,7 @@ fun SelectionEditContent(
     // 避免传入引用与单例不一致时读不到已保存的勾选。
     val liveField = ConfigV2.INSTANCE.getModelFields(modelCode)?.get(field.code) ?: field
     val single = liveField.type == "SELECT_ONE" || liveField.type == "SELECT_AND_COUNT_ONE"
-    val withCount = liveField.type == "SELECT_AND_COUNT" && (liveField.code == "waterFriendList" || liveField.code == "wateredFriendList")
+    val withCount = liveField.type == "SELECT_AND_COUNT"
 
     @Suppress("UNCHECKED_CAST")
     val smf = when {

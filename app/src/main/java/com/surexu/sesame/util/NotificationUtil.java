@@ -9,6 +9,7 @@ import android.os.Build;
 import lombok.Getter;
 import com.surexu.sesame.data.RuntimeInfo;
 import com.surexu.sesame.model.normal.base.BaseModel;
+import com.surexu.sesame.util.idMap.UserIdMap;
 
 public class NotificationUtil {
     private static Context context;
@@ -19,7 +20,6 @@ public class NotificationUtil {
 
     @Getter
     private static volatile long lastNoticeTime = 0;
-    private static String titleText = "Sure-Xu";
     private static String contentText = "";
     /** 活跃任务计数，>0 表示有异步任务仍在执行。由 ModelTask 在 startTask/finally 里增减 */
     private static volatile int runningCount = 0;
@@ -41,7 +41,6 @@ public class NotificationUtil {
         try {
             NotificationUtil.context = context;
             NotificationUtil.stop();
-            titleText = "Sure-Xu";
             contentText = "启动中";
             mNotifyManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             Intent it = new Intent(Intent.ACTION_VIEW);
@@ -131,10 +130,12 @@ public class NotificationUtil {
         NotificationUtil.nextExecTime = nextExecTime;
     }
 
-    /** 通知栏显示「下次执行」时间（SX 定制，由 ApplicationHook 触发） */
+    /** 通知栏显示「下次执行」时间（SX 定制，由 ApplicationHook 触发）；标题固定为模块名，时间写入内容行 */
     public static void updateNextExecText(long nextExecTime) {
         try {
-            titleText = nextExecTime > 0 ? "下次执行 " + TimeUtil.getTimeStr(nextExecTime) : "";
+            setNextExecTime(nextExecTime);
+            contentText = nextExecTime > 0 ? "下次执行 " + TimeUtil.getTimeStr(nextExecTime) : "";
+            lastNoticeTime = System.currentTimeMillis();
             sendText();
         } catch (Exception e) {
             Log.printStackTrace(e);
@@ -142,19 +143,16 @@ public class NotificationUtil {
     }
 
     /**
-     * 所有任务完成时调用：更新「上次执行」时间，并写入「下次执行」时间。
+     * 所有任务完成时调用：内容行只保留「下次执行」时间（与 XRadiant 样式一致，不显示上次执行）。
      * 由 ModelTask.finally 中 runningCount == 0 时统一触发。
      */
     public static void updateLastExecText() {
         try {
-            long now = System.currentTimeMillis();
-            String lastPart = "上次执行  " + TimeUtil.getTimeStr(now);
             if (nextExecTime > 0) {
-                lastPart += "  下次执行 " + TimeUtil.getTimeStr(nextExecTime);
+                contentText = "下次执行 " + TimeUtil.getTimeStr(nextExecTime);
                 nextExecTime = 0;
             }
-            contentText = lastPart;
-            lastNoticeTime = now;
+            lastNoticeTime = System.currentTimeMillis();
             sendText();
         } catch (Exception e) {
             Log.printStackTrace(e);
@@ -162,8 +160,13 @@ public class NotificationUtil {
     }
 
     public static void setStatusTextExec() {
+        setStatusTextExec(null);
+    }
+
+    /** 执行中显示具体任务名，如「正在执行 森林」；任务名为空时退化为「执行中」 */
+    public static void setStatusTextExec(String taskName) {
         try {
-            contentText = "Sure-Xu执行中";
+            contentText = StringUtil.isEmpty(taskName) ? "执行中" : "正在执行 " + taskName;
             lastNoticeTime = System.currentTimeMillis();
             sendText();
         } catch (Exception e) {
@@ -184,9 +187,19 @@ public class NotificationUtil {
         }
     }
 
+    /** 通知栏标题固定为「Sure-Xu + 账号标识」，与 XRadiant 风格一致；uid 为空（UI 进程）时只显示模块名 */
+    private static String buildTitle() {
+        try {
+            String label = UserIdMap.getAccountLabel(UserIdMap.getCurrentUid());
+            return label == null ? "Sure-Xu" : "Sure-Xu " + label;
+        } catch (Throwable t) {
+            return "Sure-Xu";
+        }
+    }
+
     private static void sendText() {
         try {
-            builder.setContentTitle(titleText);
+            builder.setContentTitle(buildTitle());
             if (!StringUtil.isEmpty(contentText)) {
                 builder.setContentText(contentText);
             }
