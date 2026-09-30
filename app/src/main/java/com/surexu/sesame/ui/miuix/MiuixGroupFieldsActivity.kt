@@ -117,13 +117,12 @@ class MiuixGroupFieldsActivity : MiuixBaseActivity() {
 
     /**
      * 统一落盘入口：本页字段变更只写内存，只有真正退出时才调用这里写一次磁盘。
-     * 先用 isModify() 判断是否有改动（无改动直接短路，不写盘、不提示），
-     * 确认有改动后走 force=true，避免 ConfigV2.save() 内部再做一次全量序列化比较。
+     * 是否提示/写盘只看「本进程字段级改动」（hasFieldChanges 基于页面打开时的快照），
+     * 不能依赖 isModify()：它比较的是整份序列化文本，磁盘里任何格式差异都会判成"有改动"，
+     * 导致没动任何开关返回也弹"保存成功"并给支付宝发重启广播（用户反馈的"返回即保存成功直接运行"）。
      */
     fun save() {
-        // userId 为 null 表示「默认」账号：isModify/save 都会落到默认配置文件，
-        // 不能直接 return，否则默认账号下改完配置退出等于没保存，且没有任何提示。
-        if (!ConfigV2.isModify(userId)) return
+        if (!ConfigV2.hasFieldChanges()) return
         if (ConfigV2.save(userId, true)) {
             ToastUtil.show(this, "保存成功！")
             sendRestartIfNeeded()

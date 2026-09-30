@@ -45,6 +45,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Upload
@@ -562,6 +563,15 @@ fun LogTopBar(
                     Icon(
                         imageVector = Icons.Filled.Share,
                         contentDescription = "分享",
+                        tint = MiuixTheme.colorScheme.onBackground
+                    )
+                }
+            }
+            if (onExecute != null) {
+                IconButton(onClick = onExecute) {
+                    Icon(
+                        imageVector = Icons.Filled.PlayArrow,
+                        contentDescription = "执行",
                         tint = MiuixTheme.colorScheme.onBackground
                     )
                 }
