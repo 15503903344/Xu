@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.surexu.sesame.data.AppConfig
 import com.surexu.sesame.data.ConfigPreload
 import com.surexu.sesame.data.ConfigV2
 import com.surexu.sesame.data.Model
@@ -164,6 +165,12 @@ private sealed interface GroupFieldsRow {
         val first: Boolean,
         val last: Boolean
     ) : GroupFieldsRow
+
+    /** 走 AppConfig 全局配置（非 ConfigV2 字段）的手写开关行 */
+    data class AppConfigSwitch(
+        override val key: String,
+        val title: String
+    ) : GroupFieldsRow
 }
 
 @Composable
@@ -192,6 +199,14 @@ fun GroupFieldsContent(activity: MiuixGroupFieldsActivity, userId: String?, grou
                         last = index == visibleFields.lastIndex
                     )
                 )
+                // 「开启状态栏禁删」「屏蔽部分弹窗」走 AppConfig 全局配置（非 ConfigV2 字段），
+                // 历史位置在配置页基础分组、开启抓包(debugMode)下方，故在字段行后插入手写开关行。
+                if (groupCode == "BASE" && field.code == "debugMode") {
+                    list.add(GroupFieldsRow.AppConfigSwitch(key = "appcfg:enableOnGoing", title = "开启状态栏禁删"))
+                    list.add(GroupFieldsRow.AppConfigSwitch(key = "appcfg:closeCaptchaDialog", title = "屏蔽部分弹窗"))
+                    list.add(GroupFieldsRow.AppConfigSwitch(key = "appcfg:showToast", title = "气泡提示"))
+                    list.add(GroupFieldsRow.AppConfigSwitch(key = "appcfg:toastOffsetY", title = "气泡纵向偏移"))
+                }
             }
         }
         list
@@ -201,7 +216,18 @@ fun GroupFieldsContent(activity: MiuixGroupFieldsActivity, userId: String?, grou
         topBar = {
             LogTopBar(
                 title = group.getName(),
-                onBack = { activity.saveAndFinish() }
+                onBack = { activity.saveAndFinish() },
+                onExecute = {
+                    try {
+                        val intent = Intent("com.eg.android.AlipayGphone.sesame.execute")
+                        intent.putExtra("group", group.getCode())
+                        activity.sendBroadcast(intent)
+                        ToastUtil.show(activity, "已发送执行请求：" + group.getName())
+                    } catch (th: Throwable) {
+                        Log.printStackTrace(th)
+                        ToastUtil.show(activity, "执行失败: " + th.message)
+                    }
+                }
             )
         },
         containerColor = MiuixTheme.colorScheme.surface
@@ -224,6 +250,7 @@ fun GroupFieldsContent(activity: MiuixGroupFieldsActivity, userId: String?, grou
                         row = row,
                         onDependencyChanged = { depVersion++ }
                     )
+                    is GroupFieldsRow.AppConfigSwitch -> AppConfigSwitchRow(activity = activity, row = row)
                 }
             }
         }
@@ -262,6 +289,89 @@ private fun GroupFieldRow(
         } else {
             // 只写内存，落盘统一在 saveAndFinish() / onBackPressed() 完成
             FieldItem(field = field, onFieldChanged = onDependencyChanged)
+        }
+    }
+}
+
+/**
+ * AppConfig 全局配置开关行（非 ConfigV2 字段）：
+ * 「开启状态栏禁删」「屏蔽部分弹窗」「气泡提示」「气泡纵向偏移」逻辑读 AppConfig.INSTANCE
+ * （NotificationUtil / CaptchaHook / ToastUtil），因此开关直接读写 AppConfig 并即时落盘 + 广播重载，
+ * 不参与本页退出的统一 ConfigV2 保存。
+ */
+@Composable
+private fun AppConfigSwitchRow(activity: MiuixGroupFieldsActivity, row: GroupFieldsRow.AppConfigSwitch) {
+    ItemCard(verticalPadding = 5.dp) {
+        when (row.key) {
+            "appcfg:enableOnGoing" -> {
+                var checked by remember { mutableStateOf(AppConfig.INSTANCE.enableOnGoing ?: false) }
+                SwitchPreference(
+                    title = row.title,
+                    summary = null,
+                    checked = checked,
+                    onCheckedChange = {
+                        checked = it
+                        AppConfig.INSTANCE.enableOnGoing = it
+                        AppConfig.save()
+                        activity.sendBroadcast(Intent("com.eg.android.AlipayGphone.sesame.reloadConfig"))
+                    }
+                )
+            }
+            "appcfg:closeCaptchaDialog" -> {
+                var checked by remember { mutableStateOf(AppConfig.INSTANCE.closeCaptchaDialog ?: true) }
+                SwitchPreference(
+                    title = row.title,
+                    summary = null,
+                    checked = checked,
+                    onCheckedChange = {
+                        checked = it
+                        AppConfig.INSTANCE.closeCaptchaDialog = it
+                        AppConfig.save()
+                        activity.sendBroadcast(Intent("com.eg.android.AlipayGphone.sesame.reloadConfig"))
+                    }
+                )
+            }
+            "appcfg:showToast" -> {
+                var checked by remember { mutableStateOf(AppConfig.INSTANCE.showToast ?: true) }
+                SwitchPreference(
+                    title = row.title,
+                    summary = null,
+                    checked = checked,
+                    onCheckedChange = {
+                        checked = it
+                        AppConfig.INSTANCE.showToast = it
+                        AppConfig.save()
+                        activity.sendBroadcast(Intent("com.eg.android.AlipayGphone.sesame.reloadConfig"))
+                    }
+                )
+            }
+            "appcfg:toastOffsetY" -> {
+                var text by remember { mutableStateOf((AppConfig.INSTANCE.toastOffsetY ?: 0).toString()) }
+                var expanded by remember { mutableStateOf(false) }
+                Column {
+                    ArrowPreference(
+                        title = row.title,
+                        summary = if (text.isEmpty()) "0 px（正数向下）" else "$text px（正数向下）",
+                        onClick = { expanded = !expanded }
+                    )
+                    if (expanded) {
+                        TextField(
+                            value = text,
+                            onValueChange = { newText ->
+                                val filtered = newText.filterIndexed { index, c -> c.isDigit() || (c == '-' && index == 0) }
+                                text = filtered
+                                filtered.toIntOrNull()?.let { value ->
+                                    AppConfig.INSTANCE.toastOffsetY = value
+                                    AppConfig.save()
+                                    activity.sendBroadcast(Intent("com.eg.android.AlipayGphone.sesame.reloadConfig"))
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            label = ""
+                        )
+                    }
+                }
+            }
         }
     }
 }

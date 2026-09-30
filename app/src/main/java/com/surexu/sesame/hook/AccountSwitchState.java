@@ -93,7 +93,8 @@ public final class AccountSwitchState {
     }
 
     synchronized long targetIntervalMillis(String str, int i) {
-        return 15000L;
+        // 使用用户配置的切换间隔（秒 -> 毫秒），修复之前硬编码 15 秒导致设置失效
+        return intervalMillis(i);
     }
 
     synchronized boolean ready(String str, boolean z, boolean z2, boolean z3, long j, int i, String str2) {

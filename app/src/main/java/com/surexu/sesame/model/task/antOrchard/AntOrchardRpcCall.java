@@ -170,6 +170,39 @@ public class AntOrchardRpcCall {
         return ApplicationHook.requestString("com.alipay.antieptask.receiveTaskAwardantorchard", args1);
     }
 
+    /* ==================== 农场轮盘：做任务抽奖（阿肥寻宝记，2026-09-30 抓包） ==================== */
+
+    /** 进入轮盘活动页：拿 activityId 与剩余抽奖次数 drawAsset.blance */
+    public static String enterDrawActivityantorchard() {
+        return ApplicationHook.requestString("com.alipay.antiepdrawprod.enterDrawActivityantorchard", "[{\"activityId\":\"\",\"context\":{\"appMode\":\"student\"},\"requestType\":\"RPC\",\"sceneCode\":\"ANTORCHARD_DRAW_TIMES\",\"source\":\"antorchard\"}]");
+    }
+
+    /** 轮盘任务列表：sceneCode=ANTORCHARD_DRAW_TIMES_TASK，响应 taskInfoList（iepTaskTracer 带 taskType/taskStatus） */
+    public static String listTaskantorchard() {
+        return ApplicationHook.requestString("com.alipay.antieptask.listTaskantorchard", "[{\"extend\":{\"appMode\":\"student\"},\"requestType\":\"RPC\",\"sceneCode\":\"ANTORCHARD_DRAW_TIMES_TASK\",\"source\":\"antorchard\"}]");
+    }
+
+    /** 完成轮盘任务（TODO → 得抽奖次数）。outBizNo 格式与抓包一致：taskType_毫秒时间戳_8位随机串 */
+    public static String finishTaskantorchard(String taskType) {
+        String outBizNo = taskType + "_" + System.currentTimeMillis() + "_" + RandomUtil.getRandomString(8);
+        return ApplicationHook.requestString("com.alipay.antieptask.finishTaskantorchard", "[{\"outBizNo\":\"" + outBizNo + "\",\"sceneCode\":\"ANTORCHARD_DRAW_TIMES_TASK\",\"source\":\"antorchard\",\"taskType\":\"" + taskType + "\"}]");
+    }
+
+    /** 领取轮盘任务奖励（FINISHED → +N 次抽奖）。与 2026-09-30 抓包一致：不带 awardCountForReceive */
+    public static String receiveTaskAwardantorchard(String sceneCode, String taskType) {
+        return ApplicationHook.requestString("com.alipay.antieptask.receiveTaskAwardantorchard", "[{\"ignoreLimit\":true,\"requestType\":\"RPC\",\"sceneCode\":\"" + sceneCode + "\",\"source\":\"antorchard\",\"taskType\":\"" + taskType + "\"}]");
+    }
+
+    /** 同步轮盘剩余抽奖次数：响应 drawAsset.blance */
+    public static String drawSyncantorchard(String activityId) {
+        return ApplicationHook.requestString("com.alipay.antiepdrawprod.drawSyncantorchard", "[{\"activityId\":\"" + activityId + "\",\"context\":{\"appMode\":\"student\"},\"requestType\":\"RPC\",\"sceneCode\":\"ANTORCHARD_DRAW_TIMES\",\"source\":\"taskaward\"}]");
+    }
+
+    /** 批量抽奖：times 为剩余次数，一次抽完。响应 drawResultList[]（prizeVO.prizeName） */
+    public static String batchDrawantorchard(String activityId, int times, String userId) {
+        return ApplicationHook.requestString("com.alipay.antiepdrawprod.batchDrawantorchard", "[{\"activityId\":\"" + activityId + "\",\"requestType\":\"RPC\",\"sceneCode\":\"ANTORCHARD_DRAW_TIMES\",\"source\":\"antorchard\",\"times\":" + times + ",\"userId\":\"" + userId + "\"}]");
+    }
+
 
     /**
      * 带参数的 orchardSyncIndex（适配第二个文件中的调用）

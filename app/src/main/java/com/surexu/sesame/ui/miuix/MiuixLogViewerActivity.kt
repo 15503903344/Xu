@@ -487,6 +487,7 @@ fun LogTopBar(
     onExport: (() -> Unit)? = null,
     onClear: (() -> Unit)? = null,
     onShare: (() -> Unit)? = null,
+    onExecute: (() -> Unit)? = null,
 ) {
     Column(
         Modifier

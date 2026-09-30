@@ -191,7 +191,6 @@ public class AntForestV2 extends ModelTask {
     private BooleanModelField collectRobExpandEnergyEnable;
     private BooleanModelField collectWateringBubble;
     private BooleanModelField batchRobEnergy;
-    private BooleanModelField collectEnergyToast;
     private BooleanModelField balanceNetworkDelay;
     //PK能量
     private BooleanModelField pkEnergy;
@@ -302,7 +301,6 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(collectEnergy = new BooleanModelField("collectEnergy", "收集能量", false));
         modelFields.addField(dontCollectList = new SelectModelField("dontCollectList", "不收取能量列表", new LinkedHashSet<>(), AlipayUser::getList));
         modelFields.addField(batchRobEnergy = new BooleanModelField("batchRobEnergy", "一键收取", false));
-        modelFields.addField(collectEnergyToast = new BooleanModelField("collectEnergyToast", "收能量气泡提示", true));
         modelFields.addField(CollectSelfEnergyType = new ChoiceModelField("CollectSelfEnergyType", "收单个能量球 | " + "方式", CollectSelfType.ALL, CollectSelfType.nickNames));
         modelFields.addField(CollectSelfEnergyThreshold = new IntegerModelField("CollectSelfEnergyThreshold", "收单个能量球阈值(0不限制)", 0, 0, 10000));
         modelFields.addField(pkEnergy = new BooleanModelField("pkEnergy", "Pk榜收取 | 开关", false));
@@ -522,9 +520,7 @@ public class AntForestV2 extends ModelTask {
                                                 Statistics.addData(Statistics.DataType.WATEREDCOUNT, 1);
                                                 String msg = "收取金球🍯[" + friendShowName + "]的浇水[" + collected + "g]";
                                                 Log.forest(msg + "");
-                                                if (collectEnergyToast.getValue()) {
-                                                    Toast.show(msg);
-                                                }
+                                                Toast.show(msg);
                                                 totalCollected += collected;
                                                 Statistics.addData(Statistics.DataType.COLLECTED, collected);
                                             } else {
@@ -539,9 +535,7 @@ public class AntForestV2 extends ModelTask {
                                             collected = joEnergy.getInt("energy");
                                             String msg = "收取金球🍯复活[" + collected + "g]";
                                             Log.forest(msg + "");
-                                            if (collectEnergyToast.getValue()) {
-                                                Toast.show(msg);
-                                            }
+                                            Toast.show(msg);
                                             totalCollected += collected;
                                             Statistics.addData(Statistics.DataType.COLLECTED, collected);
                                         }
@@ -557,9 +551,7 @@ public class AntForestV2 extends ModelTask {
                                             if (collected > 0) {
                                                 String msg = "收取金球🍯[" + friendShowName + "]复活回赠[" + collected + "g]";
                                                 Log.forest(msg + "");
-                                                if (collectEnergyToast.getValue()) {
-                                                    Toast.show(msg);
-                                                }
+                                                Toast.show(msg);
                                                 totalCollected += collected;
                                                 Statistics.addData(Statistics.DataType.COLLECTED, collected);
                                             } else {
@@ -659,7 +651,7 @@ public class AntForestV2 extends ModelTask {
                 // 真爱合种浇水
                 if (loveteamWater.getValue()) {
                     if (loveteamWaterNum.getValue() >= 20 && loveteamWaterNum.getValue() <= 10000) {
-                        loveteam(loveteamWaterNum.getValue(), collectEnergyToast.getValue());
+                        loveteam(loveteamWaterNum.getValue());
                     }
                 }
 
@@ -1476,14 +1468,10 @@ public class AntForestV2 extends ModelTask {
                         }
                         if (needDouble) {
                             Log.forest(str + "耗时[" + spendTime + "]ms[双击]");
-                            if (collectEnergyToast.getValue()) {
-                                Toast.show(str + "[双击]");
-                            }
+                            Toast.show(str + "[双击]");
                         } else {
                             Log.forest(str + "耗时[" + spendTime + "]ms");
-                            if (collectEnergyToast.getValue()) {
-                                Toast.show(str);
-                            }
+                            Toast.show(str);
                         }
                         totalCollected += collected;
                         Statistics.addData(Statistics.DataType.COLLECTED, collected);
@@ -1512,14 +1500,10 @@ public class AntForestV2 extends ModelTask {
 
                         if (needDouble) {
                             Log.forest(str + "耗时[" + spendTime + "]ms[双击]");
-                            if (collectEnergyToast.getValue()) {
-                                Toast.show(str + "[双击]");
-                            }
+                            Toast.show(str + "[双击]");
                         } else {
                             Log.forest(str + "耗时[" + spendTime + "]ms");
-                            if (collectEnergyToast.getValue()) {
-                                Toast.show(str);
-                            }
+                            Toast.show(str);
                         }
                         totalCollected += collected;
                         Statistics.addData(Statistics.DataType.COLLECTED, collected);
@@ -1961,9 +1945,7 @@ public class AntForestV2 extends ModelTask {
             JSONObject energyGenerated = resultObject.getJSONObject("energyGenerated");
             int zulinshangpinliulan = energyGenerated.getInt("zulinshangpinliulan");
             Log.forest("绿色租赁🛍️完成[线上逛街]#产生[" + zulinshangpinliulan + "g能量]");
-            if (isCollectEnergyToastEnabled()) {
-                Toast.show("绿色租赁🛍️完成[线上逛街]#产生[" + zulinshangpinliulan + "g能量]");
-            }
+            Toast.show("绿色租赁🛍️完成[线上逛街]#产生[" + zulinshangpinliulan + "g能量]");
         } catch (Throwable t) {
             Log.err(TAG, "greenRent err:", t);
         }
@@ -2024,9 +2006,7 @@ public class AntForestV2 extends ModelTask {
                     if (data.optBoolean("canSendEnergy", false)) {
                         int receivedEnergyAmount = data.getInt("receivedEnergyAmount");
                         Log.forest("森林集市🛍️完成[线上逛街]#产生[" + receivedEnergyAmount + "g能量]");
-                        if (isCollectEnergyToastEnabled()) {
-                            Toast.show("森林集市🛍️完成[线上逛街]#产生[" + receivedEnergyAmount + "g能量]");
-                        }
+                        Toast.show("森林集市🛍️完成[线上逛街]#产生[" + receivedEnergyAmount + "g能量]");
                     }
                 }
             }
@@ -2133,9 +2113,7 @@ public class AntForestV2 extends ModelTask {
                         Statistics.addData(Statistics.DataType.WATERINGCOUNT, 1);
                         int currentEnergy = jo.getJSONObject("userBaseInfo").getInt("currentEnergy");
                         Log.forest("好友浇水🚿给[" + UserIdMap.getShowName(userId) + "]浇" + waterEnergy + "g#剩余能量[" + currentEnergy + "g]");
-                        if (collectEnergyToast.getValue()) {
-                            Toast.show("好友浇水🚿给[" + UserIdMap.getShowName(userId) + "]浇" + waterEnergy + "g");
-                        }
+                        Toast.show("好友浇水🚿给[" + UserIdMap.getShowName(userId) + "]浇" + waterEnergy + "g");
                         wateredTimes++;
                         Statistics.addData(Statistics.DataType.WATERED, waterEnergy);
                         break;
@@ -2584,9 +2562,7 @@ public class AntForestV2 extends ModelTask {
             }
             jo = new JSONObject(AntForestRpcCall.energyRainSettlement(sum, token));
             if (MessageUtil.checkResultCode(TAG, jo)) {
-                if (collectEnergyToast.getValue()) {
-                    Toast.show("获得了[" + sum + "g]能量[能量雨]");
-                }
+                Toast.show("获得了[" + sum + "g]能量[能量雨]");
                 Log.forest("收能量雨🌧️[" + sum + "g]");
                 totalCollected += sum;
                 Statistics.addData(Statistics.DataType.COLLECTED, sum);
@@ -2800,9 +2776,7 @@ public class AntForestV2 extends ModelTask {
                         logMsg.append("其他: ").append(String.join("/", otherAwards));
                     }
                     Log.forest(logMsg.toString());
-                    if (collectEnergyToast.getValue()) {
-                        Toast.show(logMsg.toString());
-                    }
+                    Toast.show(logMsg.toString());
 
                 }
 
@@ -4387,9 +4361,7 @@ public class AntForestV2 extends ModelTask {
             JSONObject waterJo = new JSONObject(AntForestRpcCall.teamWater(teamId, finalWaterAmount));
             if (MessageUtil.checkResultCode(TAG, waterJo)) {
                 Log.forest("组队合种🚿给合种浇水" + finalWaterAmount + "g");
-                if (collectEnergyToast.getValue()) {
-                    Toast.show("组队合种🚿给合种浇水" + finalWaterAmount + "g");
-                }
+                Toast.show("组队合种🚿给合种浇水" + finalWaterAmount + "g");
                 Status.forestHuntHelpToday("FLAG_TEAM_WATER_DAILY_COUNT", todayUsed + finalWaterAmount, UserIdMap.getCurrentUid());
                 Log.record("组队合种今日浇水累计: " + (todayUsed + finalWaterAmount) + "g / " + userDailyTarget + "g");
             }
@@ -4501,7 +4473,7 @@ public class AntForestV2 extends ModelTask {
         return teamState(homeObj) == 1;
     }
 
-    private static void loveteam(int waterNum, boolean toastEnabled) {
+    private static void loveteam(int waterNum) {
         if (Status.hasFlagToday("Forest::loveteamWater")) {
             return;
         }
@@ -4516,7 +4488,7 @@ public class AntForestV2 extends ModelTask {
                 Log.record("真爱合种:未加入真爱合种或未取到队伍，跳过");
                 return;
             }
-            loveteamWater(teamId, getLoveteamName(jo, teamId), waterNum, toastEnabled);
+            loveteamWater(teamId, getLoveteamName(jo, teamId), waterNum);
         } catch (Throwable th) {
             Log.err(TAG, "loveteam err:", th);
         }
@@ -4540,14 +4512,12 @@ public class AntForestV2 extends ModelTask {
         return name.isEmpty() ? teamId : name;
     }
 
-    private static void loveteamWater(String teamId, String teamName, int waterNum, boolean toastEnabled) {
+    private static void loveteamWater(String teamId, String teamName, int waterNum) {
         try {
             JSONObject jo = new JSONObject(AntForestRpcCall.loveteamWater(teamId, waterNum));
             if (MessageUtil.checkSuccess(TAG, jo)) {
                 Log.forest("真爱浇水🚿给[" + teamName + "]合种浇水" + waterNum + "g");
-                if (toastEnabled) {
-                    Toast.show("真爱浇水🚿给[" + teamName + "]合种浇水" + waterNum + "g");
-                }
+                Toast.show("真爱浇水🚿给[" + teamName + "]合种浇水" + waterNum + "g");
                 Status.flagToday("Forest::loveteamWater");
             }
         } catch (Throwable th) {
@@ -4944,15 +4914,4 @@ public class AntForestV2 extends ModelTask {
         String[] nickNames = {"关闭", "兼容模式", "激进模式"};
     }
 
-    /** 收能量气泡提示开关（静态方法内读取） */
-    private static boolean isCollectEnergyToastEnabled() {
-        try {
-            ModelFields forest = ConfigV2.INSTANCE.getModelFieldsMap().get("AntForestV2");
-            if (forest == null) return true;
-            ModelField<?> f = forest.get("collectEnergyToast");
-            return f == null || Boolean.TRUE.equals(f.getValue());
-        } catch (Throwable t) {
-            return true;
-        }
     }
-}

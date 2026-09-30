@@ -1570,14 +1570,10 @@ public class AntOcean extends ModelTask {
                         String captureUserId = captureInfoVO.optString("userId", "未知ID");
                         String displayName = captureNickName.isEmpty() ? captureUserId : captureNickName;
                         Log.forest("海洋摸鱼🐟摸到了[" + displayName + "]的鱼获得" + popup.optInt("rightsNums", 0) + "g能量");
-                        if (isCollectEnergyToastEnabled()) {
-                            Toast.show("海洋摸鱼🐟获得" + popup.optInt("rightsNums", 0) + "g能量");
-                        }
+                        Toast.show("海洋摸鱼🐟获得" + popup.optInt("rightsNums", 0) + "g能量");
                     } else {
                         Log.forest("海洋摸鱼🐟[" + popup.optString("name", "") + "]" + popup.optInt("rightsNums", 0) + "g");
-                        if (isCollectEnergyToastEnabled()) {
-                            Toast.show("海洋摸鱼🐟获得" + popup.optInt("rightsNums", 0) + "g能量");
-                        }
+                        Toast.show("海洋摸鱼🐟获得" + popup.optInt("rightsNums", 0) + "g能量");
                     }
 
                     totalEnergy += energyGain;
@@ -1606,9 +1602,7 @@ public class AntOcean extends ModelTask {
 
             if (touchCount > 0) {
                 Log.forest("海洋摸鱼🐟本次共摸鱼" + touchCount + "次获得" + totalEnergy + "g能量");
-                if (isCollectEnergyToastEnabled()) {
-                    Toast.show("海洋摸鱼🐟获得" + totalEnergy + "g能量");
-                }
+                Toast.show("海洋摸鱼🐟获得" + totalEnergy + "g能量");
             }
 
         } catch (Throwable t) {
@@ -1616,16 +1610,5 @@ public class AntOcean extends ModelTask {
         }
     }
 
-    /** 收能量气泡提示开关 */
-    private static boolean isCollectEnergyToastEnabled() {
-        try {
-            ModelFields forest = ConfigV2.INSTANCE.getModelFieldsMap().get("AntForestV2");
-            if (forest == null) return true;
-            ModelField<?> f = forest.get("collectEnergyToast");
-            return f == null || Boolean.TRUE.equals(f.getValue());
-        } catch (Throwable t) {
-            return true;
-        }
-    }
-
+    
 }

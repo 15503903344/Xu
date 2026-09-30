@@ -252,8 +252,11 @@ public final class AccountSwitchController {
             }
             HostAccountSwitchBridge hostAccountSwitchBridge = BRIDGE;
             if (!Objects.equals(hostAccountSwitchBridge.currentUid(), strCurrentUid)) {
-                STATE.fail();
-                status("宿主账号信息未一致，轮询已暂停");
+                // 切号完成后 AuthService 与 SocialSdkContactService 两处 uid 存在短暂不同步，
+                // 属瞬时状态，等待同步后重试，避免 STATE.fail() 造成永久暂停
+                STATE.defer();
+                phase("WAIT_IDENTITY");
+                status("宿主账号信息未一致，等待同步后重试");
                 return;
             }
             hostAccountSwitchBridge.probe();
@@ -308,9 +311,11 @@ public final class AccountSwitchController {
             releaseFreeze();
             STATE.waitForHome();
         } catch (Throwable unused4) {
+            // 切号期间支付宝处于切换/重启加载态，反射调用可能瞬时失败；
+            // 走 defer 自动恢复轮询，不再 STATE.fail() 永久暂停
             phase("PAUSED");
-            STATE.fail();
-            status("切号准备失败，轮询已暂停");
+            STATE.defer();
+            status("切号检查异常，稍后自动重试");
             if (flight == null) {
                 releaseFreeze();
             }
