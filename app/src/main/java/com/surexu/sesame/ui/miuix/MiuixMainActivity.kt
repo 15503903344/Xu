@@ -42,6 +42,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Agriculture
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Egg
 import androidx.compose.material.icons.filled.Forest
@@ -1023,6 +1024,8 @@ fun ConfigTab(activity: MiuixMainActivity) {
 
     // 账号选择弹窗状态:右上角账号图标点击后弹出,页面主体只保留配置分组
     var showAccountDialog by remember { mutableStateOf(false) }
+    // 删除配置确认弹窗状态
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     val currentItem = items.firstOrNull { it.first == selectedUserId }
     val currentName = currentItem?.second ?: "默认"
@@ -1111,6 +1114,14 @@ fun ConfigTab(activity: MiuixMainActivity) {
                     tint = MiuixTheme.colorScheme.onBackground
                 )
             }
+            // 删除配置:清空当前账号配置(默认账号=全局配置),删除后不可恢复
+            IconButton(onClick = { showDeleteDialog = true }) {
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = "删除配置",
+                    tint = MiuixTheme.colorScheme.onBackground
+                )
+            }
             // 账号头像按钮:默认显示人像图标;已选账号显示头像(无头像则显示账号名首字符)
             IconButton(onClick = { showAccountDialog = true }) {
                 Box(
@@ -1154,6 +1165,29 @@ fun ConfigTab(activity: MiuixMainActivity) {
                 activity.persistSelectedAccount(userId)
             },
             onDismiss = { showAccountDialog = false }
+        )
+    }
+    if (showDeleteDialog) {
+        ConfirmDialog(
+            title = "警告",
+            text = "确认删除「" + currentName + "」的配置？删除后不可恢复。",
+            onConfirm = {
+                showDeleteDialog = false
+                val file = ConfigPreload.getConfigFile(selectedUserId)
+                if (FileUtil.deleteFile(file)) {
+                    // 清掉内存中的旧配置与预加载标记，防止同进程再进配置页时旧值“复活”被重新写盘
+                    ConfigPreload.clear()
+                    ToastUtil.show(context, "配置删除成功")
+                    // 删除的是非默认账号时回退到默认配置
+                    if (selectedUserId != null) {
+                        selectedUserId = null
+                        activity.persistSelectedAccount(null)
+                    }
+                } else {
+                    ToastUtil.show(context, "配置删除失败")
+                }
+            },
+            onDismiss = { showDeleteDialog = false }
         )
     }
 
@@ -1319,10 +1353,6 @@ fun SettingsTab(activity: MiuixMainActivity) {
 
     SmallTitle(text = "功能设置")
     CardList {
-        CardArrowPreference(
-            title = "配置设置",
-            onClick = { context.startActivity(Intent(context, MiuixSettingsActivity::class.java)) }
-        )
         CardArrowPreference(
             title = "好友统计",
             onClick = { context.startActivity(Intent(context, MiuixFriendStatsActivity::class.java)) }

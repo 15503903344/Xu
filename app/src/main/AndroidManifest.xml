@@ -35,12 +35,6 @@
         </activity>
 
         <activity
-            android:name=".ui.miuix.MiuixSettingsActivity"
-            android:exported="true"
-            android:resizeableActivity="true"
-            tools:targetApi="n" />
-
-        <activity
             android:name=".ui.miuix.MiuixGroupFieldsActivity"
             android:exported="false"
             android:resizeableActivity="true" />
@@ -70,13 +64,6 @@
         <activity
             android:name=".ui.miuix.MiuixAboutActivity"
             android:exported="false"
-            android:resizeableActivity="true" />
-
-        <activity
-            android:name=".ui.miuix.PetChatActivity"
-            android:exported="false"
-            android:launchMode="singleTop"
-            android:theme="@style/PetDialogTheme"
             android:resizeableActivity="true" />
 
         <activity-alias

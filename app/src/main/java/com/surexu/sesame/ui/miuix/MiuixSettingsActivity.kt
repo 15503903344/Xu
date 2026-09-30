@@ -1,245 +1,26 @@
 package com.surexu.sesame.ui.miuix
 
-import android.content.Intent
-import android.os.Bundle
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import com.surexu.sesame.data.ConfigPreload
-import com.surexu.sesame.data.ConfigV2
-import com.surexu.sesame.data.Model
 import com.surexu.sesame.data.ModelField
-import com.surexu.sesame.data.ModelGroup
 import com.surexu.sesame.data.modelFieldExt.ChoiceModelField
 import com.surexu.sesame.data.modelFieldExt.EmptyModelField
 import com.surexu.sesame.data.modelFieldExt.IntegerModelField
-import com.surexu.sesame.data.modelFieldExt.SelectAndCountModelField
-import com.surexu.sesame.data.modelFieldExt.SelectAndCountOneModelField
-import com.surexu.sesame.data.modelFieldExt.SelectModelField
-import com.surexu.sesame.data.modelFieldExt.SelectOneModelField
-import com.surexu.sesame.entity.IdAndName
-import com.surexu.sesame.entity.KVNode
-import com.surexu.sesame.entity.MemberBenefit
-import com.surexu.sesame.util.Log
-import com.surexu.sesame.util.StringUtil
-import com.surexu.sesame.util.ToastUtil
-import kotlin.math.roundToInt
-import top.yukonga.miuix.kmp.basic.BasicComponentColors
-import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.preference.ArrowPreference
-import top.yukonga.miuix.kmp.preference.CheckboxPreference
 import top.yukonga.miuix.kmp.preference.RadioButtonPreference
-import top.yukonga.miuix.kmp.preference.SliderPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-
-class MiuixSettingsActivity : MiuixBaseActivity() {
-
-    companion object {
-        const val EXTRA_USER_ID = "userId"
-    }
-
-    private var userId: String? = null
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        userId = intent.getStringExtra(EXTRA_USER_ID)
-        Model.initAllModel()
-        ConfigPreload.prepare(userId)
-        setAppContent {
-            SettingsContent(this, userId)
-        }
-    }
-
-    override fun onBackPressed() {
-        save()
-        super.onBackPressed()
-    }
-
-    /** 顶部返回按钮与系统返回统一入口：先保存再退出（与三级/四级保持一致）。 */
-    fun saveAndFinish() {
-        save()
-        finish()
-    }
-
-    /**
-     * 统一落盘入口（二级/三级/四级同款实现）：
-     * 先用 isModify() 短路「无改动」的情况，确认有改动后走 force=true，
-     * 避免 ConfigV2.save() 内部再重复做一次全量序列化比较。
-     */
-    fun save() {
-        if (!ConfigV2.isModify(userId)) return
-        if (ConfigV2.save(userId, true)) {
-            ToastUtil.show(this, "保存成功！")
-            sendRestartIfNeeded()
-        }
-    }
-
-    private fun sendRestartIfNeeded() {
-        // userId 为 null 表示「默认」账号，也要发广播（不带 extra 即可命中当前进程），
-        // 否则默认账号下改配置保存后支付宝进程不重载，仍然不能即时生效。
-        try {
-            val intent = Intent("com.eg.android.AlipayGphone.sesame.restart")
-            if (!StringUtil.isEmpty(userId)) {
-                intent.putExtra("userId", userId)
-            }
-            sendBroadcast(intent)
-        } catch (th: Throwable) {
-            Log.printStackTrace(th)
-        }
-    }
-}
-
-@Composable
-fun SettingsContent(activity: MiuixSettingsActivity, userId: String?) {
-    val context = LocalContext.current
-    var showDeleteDialog by remember { mutableStateOf(false) }
-
-    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("*/*")) { uri ->
-        if (uri != null) {
-            val file = ConfigPreload.getConfigFile(userId)
-            try {
-                context.contentResolver.openOutputStream(uri)?.use { os ->
-                    file.inputStream().use { it.copyTo(os) }
-                }
-                ToastUtil.show(context, "导出成功！")
-            } catch (e: Exception) {
-                ToastUtil.show(context, "导出失败！")
-            }
-        }
-    }
-    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) {
-            val file = ConfigPreload.getConfigFile(userId)
-            try {
-                val content = context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
-                if (content.isNullOrBlank()) {
-                    ToastUtil.show(context, "导入失败：文件为空")
-                    return@rememberLauncherForActivityResult
-                }
-                // 预校验 JSON 语法：坏文件直接拒绝，避免误报“导入成功”却由 ConfigV2.load 回退成备份旧配置
-                try {
-                    com.fasterxml.jackson.databind.ObjectMapper().readTree(content)
-                } catch (e: Exception) {
-                    ToastUtil.show(context, "导入失败：配置文件格式错误")
-                    return@rememberLauncherForActivityResult
-                }
-                file.outputStream().use { it.write(content.toByteArray(Charsets.UTF_8)) }
-                // 导入后通知支付宝进程重载；userId 为空表示默认账号，也要发广播（不带 extra 即可命中当前进程）
-                try {
-                    val intent = Intent("com.eg.android.AlipayGphone.sesame.restart")
-                    if (!StringUtil.isEmpty(userId)) {
-                        intent.putExtra("userId", userId)
-                    }
-                    context.sendBroadcast(intent)
-                } catch (th: Throwable) {
-                    Log.printStackTrace(th)
-                }
-                Model.initAllModel()
-                ConfigPreload.reload(userId)
-                ToastUtil.show(context, "导入成功！")
-            } catch (e: Exception) {
-                ToastUtil.show(context, "导入失败！")
-            }
-        }
-    }
-
-    // ============ 二级:分组目录 ============
-    Scaffold(
-        topBar = {
-            LogTopBar(
-                title = "配置设置",
-                onBack = { activity.saveAndFinish() },
-                onImport = { importLauncher.launch("*/*") },
-                onExport = { exportLauncher.launch("[" + (userId ?: "默认") + "]-config_v2.json") },
-                onClear = { showDeleteDialog = true }
-            )
-        },
-        containerColor = MiuixTheme.colorScheme.surface
-    ) { padding ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(padding)
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-        ) {
-            // ============ 配置分组目录 ============
-            SmallTitle(text = "配置分组")
-            CardList {
-                ModelGroup.values().forEach { g ->
-                    if (Model.getGroupModelConfig(g).isNotEmpty()) {
-                        CardArrowPreference(title = g.getName(), onClick = {
-                            activity.startActivity(
-                                Intent(activity, MiuixGroupFieldsActivity::class.java).apply {
-                                    putExtra(MiuixGroupFieldsActivity.EXTRA_USER_ID, userId)
-                                    putExtra(MiuixGroupFieldsActivity.EXTRA_GROUP_CODE, g.name)
-                                }
-                            )
-                        })
-                    }
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-
-            if (showDeleteDialog) {
-                ConfirmDialog(
-                    title = "警告",
-                    text = "确认删除该配置？",
-                    onConfirm = {
-                        showDeleteDialog = false
-                        if (ConfigPreload.getConfigFile(userId).let { com.surexu.sesame.util.FileUtil.deleteFile(it) }) {
-                            ToastUtil.show(context, "配置删除成功")
-                            // 清掉内存中的旧配置与预加载标记，防止同进程再进配置页时旧值“复活”被重新写盘
-                            ConfigPreload.clear()
-                        }
-                        activity.finish()
-                    },
-                    onDismiss = { showDeleteDialog = false }
-                )
-            }
-        }
-    }
-}
 
 /**
  * 配置字段编辑项（原地展开编辑）。
@@ -250,6 +31,23 @@ fun SettingsContent(activity: MiuixSettingsActivity, userId: String?) {
  */
 @Composable
 fun FieldItem(field: ModelField<*>, onFieldChanged: (() -> Unit)? = null) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        FieldItemBody(field, onFieldChanged)
+        // 字段说明统一在这里渲染；BOOLEAN 的说明由 SwitchPreference(summary) 承载，不重复
+        val description = field.description
+        if (field.type != "BOOLEAN" && !description.isNullOrBlank()) {
+            Text(
+                text = description,
+                style = MiuixTheme.textStyles.body2,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 6.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun FieldItemBody(field: ModelField<*>, onFieldChanged: (() -> Unit)? = null) {
     // 用字段名唯一标识展开状态，避免 LazyColumn 复用导致错位
     val fieldKey = "${field.type}:${field.name}"
     var expanded by remember { mutableStateOf(false) }
@@ -295,34 +93,23 @@ fun FieldItem(field: ModelField<*>, onFieldChanged: (() -> Unit)? = null) {
                 }
             )
             if (expanded) {
-                val context2 = LocalContext.current
                 var text by remember { mutableStateOf(current.toString()) }
-                Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp).padding(horizontal = 16.dp)) {
                     TextField(
                         value = text,
-                        onValueChange = { text = it },
-                        label = "",
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(text = "取消", onClick = { expanded = false; expandedFieldKey = null })
-                        Spacer(Modifier.width(8.dp))
-                        TextButton(text = "保存", onClick = {
-                            val parsed = text.trim().toIntOrNull()
-                            if (parsed == null) {
-                                ToastUtil.show(context2, "请输入有效整数")
-                            } else if (lowerLimit != null && parsed < lowerLimit) {
-                                ToastUtil.show(context2, "最小值为 $lowerLimit")
-                            } else if (maxLimit != null && parsed > maxLimit) {
-                                ToastUtil.show(context2, "最大值为 $maxLimit")
-                            } else {
+                        onValueChange = { input ->
+                            val filtered = input.filterIndexed { index, c -> c.isDigit() || (c == '-' && index == 0) }
+                            text = filtered
+                            val parsed = filtered.toIntOrNull()
+                            val belowMin = lowerLimit != null && (parsed == null || parsed < lowerLimit)
+                            val aboveMax = maxLimit != null && (parsed == null || parsed > maxLimit)
+                            if (!belowMin && !aboveMax) {
                                 field.setConfigValue(parsed.toString())
-                                expanded = false
-                                expandedFieldKey = null
+                                onFieldChanged?.invoke()
                             }
-                        })
-                    }
+                        },
+                        label = "",
+                    )
                 }
             }
         }
@@ -342,55 +129,16 @@ fun FieldItem(field: ModelField<*>, onFieldChanged: (() -> Unit)? = null) {
             )
             if (expanded) {
                 var text by remember { mutableStateOf(field.configValue ?: "") }
-                // 会员额外兑换：按名称实时过滤权益库候选，点击候选直接填入
-                val isCustomBenefit = field.code == "memberPointExchangeCustom"
-                val candidates = remember(text, isCustomBenefit) {
-                    if (!isCustomBenefit || text.isBlank()) {
-                        emptyList()
-                    } else {
-                        MemberBenefit.getList()
-                            .filter { it.name.contains(text.trim(), ignoreCase = true) || it.id.contains(text.trim()) }
-                            .take(10)
-                    }
-                }
-                Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp).padding(horizontal = 16.dp)) {
                     TextField(
                         value = text,
-                        onValueChange = { text = it },
+                        onValueChange = {
+                            text = it
+                            field.setObjectValue(it)
+                            onFieldChanged?.invoke()
+                        },
                         label = "",
-                        modifier = Modifier.fillMaxWidth()
                     )
-                    if (isCustomBenefit && candidates.isNotEmpty()) {
-                        Spacer(Modifier.height(4.dp))
-                        candidates.forEach { cand ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { text = cand.name }
-                                    .padding(vertical = 6.dp, horizontal = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = cand.name,
-                                    fontSize = 13.sp,
-                                    maxLines = 1,
-                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                    color = MiuixTheme.colorScheme.primary,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                        Spacer(Modifier.height(4.dp))
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(text = "取消", onClick = { expanded = false; expandedFieldKey = null })
-                        Spacer(Modifier.width(8.dp))
-                        TextButton(text = "保存", onClick = {
-                            field.setObjectValue(text)
-                            expanded = false
-                            expandedFieldKey = null
-                        })
-                    }
                 }
             }
         }
@@ -421,26 +169,18 @@ fun FieldItem(field: ModelField<*>, onFieldChanged: (() -> Unit)? = null) {
             )
             if (expanded) {
                 var text by remember { mutableStateOf(list.joinToString("\n")) }
-                Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp).padding(horizontal = 16.dp)) {
                     TextField(
                         value = text,
-                        onValueChange = { text = it },
+                        onValueChange = { input ->
+                            text = input
+                            field.setObjectValue(input.lines().map { it.trim() }.filter { it.isNotEmpty() })
+                            onFieldChanged?.invoke()
+                        },
                         label = "",
                         singleLine = false,
                         maxLines = 8,
-                        modifier = Modifier.fillMaxWidth()
                     )
-                    Spacer(Modifier.height(4.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(text = "取消", onClick = { expanded = false; expandedFieldKey = null })
-                        Spacer(Modifier.width(8.dp))
-                        TextButton(text = "保存", onClick = {
-                            val newList = text.lines().map { it.trim() }.filter { it.isNotEmpty() }
-                            field.setObjectValue(newList)
-                            expanded = false
-                            expandedFieldKey = null
-                        })
-                    }
                 }
             }
         }
@@ -463,37 +203,18 @@ fun FieldItem(field: ModelField<*>, onFieldChanged: (() -> Unit)? = null) {
             )
             if (expanded) {
                 var sel by remember { mutableStateOf(current) }
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
-                        .background(
-                            color = MiuixTheme.colorScheme.surfaceContainerHigh,
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
                     choiceArray.forEachIndexed { index, opt ->
+                        // 点选即生效（不再需要保存按钮）
                         RadioButtonPreference(
                             title = opt,
                             selected = sel == index,
-                            titleColor = BasicComponentColors(
-                                color = if (sel == index) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface,
-                                disabledColor = MiuixTheme.colorScheme.disabledOnSurface
-                            ),
-                            onClick = { sel = index }
+                            onClick = {
+                                sel = index
+                                field.setObjectValue(index)
+                                onFieldChanged?.invoke()
+                            }
                         )
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(text = "取消", onClick = { expanded = false; expandedFieldKey = null })
-                        Spacer(Modifier.width(8.dp))
-                        TextButton(text = "保存", onClick = {
-                            field.setObjectValue(sel)
-                            expanded = false
-                            expandedFieldKey = null
-                            onFieldChanged?.invoke()
-                        })
                     }
                 }
             }
