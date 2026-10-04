@@ -221,6 +221,7 @@ public class AntForestV2 extends ModelTask {
     private IntegerModelField returnWater18;
     private IntegerModelField returnWater10;
     private BooleanModelField receiveForestTaskAward;
+    private BooleanModelField energySceneTask;
 
     private BooleanModelField AutoAntForestVitalityTaskList;
     private SelectModelField AntForestVitalityTaskList;
@@ -339,7 +340,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(helpFriendCollectList = new SelectModelField("helpFriendCollectList", "复活能量 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
         modelFields.addField(helpFriendCollectListLimit = new IntegerModelField("helpFriendCollectListLimit", "复活好友能量下限(大于该值复活,0不限制)", 0, 0, 100000).setDependsOn("helpFriendCollectType"));
         modelFields.addField(vitalityExchangeBenefit = new BooleanModelField("vitalityExchangeBenefit", "活力值 | 兑换权益", false));
-        modelFields.addField(vitality_ExchangeBenefitList = new SelectAndCountModelField("vitality_ExchangeBenefitList", "活力值 | 权益列表", new LinkedHashMap<>(), VitalityBenefit::getList, "请填写兑换次数(每日)").setDependsOn("vitalityExchangeBenefit"));
+        modelFields.addField(vitality_ExchangeBenefitList = new SelectAndCountModelField("vitality_ExchangeBenefitList", "活力值 | 权益列表", new LinkedHashMap<>(), VitalityBenefit::getList, "请填写兑换次数(每日)", 1, 100).setDependsOn("vitalityExchangeBenefit"));
         modelFields.addField(whackModeName = new ChoiceModelField("whackModeName", "6秒拼手速 | 运行模式", whackModeNames.CLOSE, whackModeNames.nickNames));
         modelFields.addField(whackModeGames = new IntegerModelField("whackModeGames", "6秒拼手速 | 激进模式局数", 5).setDependsOn("whackModeName"));
         modelFields.addField(whackModeCount = new IntegerModelField("whackModeCount", "6秒拼手速 | 兼容模式击打数", 15).setDependsOn("whackModeName"));
@@ -359,6 +360,9 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(MonopolyTaskList = new SelectModelField("MonopolyTaskList", "新版保护地 | 黑名单列表", new LinkedHashSet<>(), AlipayMonopolyTaskList::getList).setDependsOn("AutoMonopolyTaskList"));
         modelFields.addField(consumeAnimalPropType = new ChoiceModelField("consumeAnimalPropType", "派遣动物伙伴", ConsumeAnimalPropType.NONE, ConsumeAnimalPropType.nickNames));
         modelFields.addField(receiveForestTaskAward = new BooleanModelField("receiveForestTaskAward", "森林任务", false));
+        modelFields.addField(energySceneTask = new BooleanModelField("energySceneTask", "种树攻略 | 场景任务", false)
+                .setDependsOn("receiveForestTaskAward")
+                .setDescription("逐个尝试完成场景卡下的行为子任务（无纸化阅读、电子小票、电子发票等）；失败的由「活力值 | 自动黑名单」兜底，已拉黑的不再重试"));
         modelFields.addField(AutoAntForestVitalityTaskList = new BooleanModelField("AutoAntForestVitalityTaskList", "活力值 | 自动黑名单", true));
         modelFields.addField(AntForestVitalityTaskList = new SelectModelField("AntForestVitalityTaskList", "活力值 | 黑名单列表", new LinkedHashSet<>(), AlipayAntForestVitalityTaskList::getList).setDependsOn("AutoAntForestVitalityTaskList"));
         modelFields.addField(collectGiftBox = new BooleanModelField("collectGiftBox", "领取礼盒", false));
@@ -1827,7 +1831,7 @@ public class AntForestV2 extends ModelTask {
                     }
 
                     // 2~4. 批量写回黑/白名单并保存
-                    MessageUtil.syncTaskBlackList("森林活力值任务", blackList, whiteList, AntForestVitalityTaskList);
+                    MessageUtil.syncTaskBlackList("森林活力值任务", "AntForestVitalityTaskList", blackList, whiteList, AntForestVitalityTaskList);
                 }
             }
 
@@ -1879,7 +1883,7 @@ public class AntForestV2 extends ModelTask {
                     }
 
                     // 2~4. 批量写回黑/白名单并保存
-                    MessageUtil.syncTaskBlackList("森林抽抽乐任务", blackList, whiteList, AntForestHuntTaskList);
+                    MessageUtil.syncTaskBlackList("森林抽抽乐任务", "AntForestHuntTaskList", blackList, whiteList, AntForestHuntTaskList);
                 }
             }
         } catch (Throwable t) {
@@ -2067,16 +2071,18 @@ public class AntForestV2 extends ModelTask {
             if (waterCount > 3) {
                 waterCount = 3;
             }
-            if (Status.canWaterFriendToday(uid, waterCount)) {
+            // 只补当日差额：waterCount 是用户配置的"今日总量"，减掉已浇次数避免重复浇水/越过配置
+            int remainCount = waterCount - Status.getWaterFriendToday(uid);
+            if (remainCount > 0) {
                 try {
                     JSONObject jo = new JSONObject(AntForestRpcCall.queryFriendHomePage(uid));
                     TimeUtil.sleep(100);
                     if (MessageUtil.checkResultCode(TAG, jo)) {
                         String bizNo = jo.getString("bizNo");
-                        KVNode<Integer, Boolean> waterCountKVNode = returnFriendWater(uid, bizNo, waterCount, waterEnergy);
-                        waterCount = waterCountKVNode.getKey();
-                        if (waterCount > 0) {
-                            Status.waterFriendToday(uid, waterCount, taskUid);
+                        KVNode<Integer, Boolean> waterCountKVNode = returnFriendWater(uid, bizNo, remainCount, waterEnergy);
+                        int wateredCount = waterCountKVNode.getKey();
+                        if (wateredCount > 0) {
+                            Status.waterFriendToday(uid, wateredCount, taskUid);
                         }
                         if (!waterCountKVNode.getValue()) {
                             break;
@@ -2409,6 +2415,17 @@ public class AntForestV2 extends ModelTask {
                         }
                     }
 
+                    // 种树攻略场景卡：行为子任务挂在 childTaskTypeList 下，父任务只是容器、没有完成接口
+                    if ("ENERGY_XUANJIAO".equals(taskType)) {
+                        if (energySceneTask.getValue()) {
+                            JSONArray childTaskTypeList = taskInfo.optJSONArray("childTaskTypeList");
+                            if (childTaskTypeList != null && childTaskTypeList.length() > 0) {
+                                doEnergySceneTask(childTaskTypeList);
+                            }
+                        }
+                        continue;
+                    }
+
                     doubleCheck = finishTask(sceneCode, taskType, taskTitle);
                 }
             }
@@ -2540,6 +2557,30 @@ public class AntForestV2 extends ModelTask {
             }
         } catch (Throwable th) {
             Log.err(TAG, "doChildTask err:", th);
+        }
+    }
+
+    /**
+     * 场景卡子任务：已拉黑的跳过，其余 TODO 一律尝试完成，失败由 {@link #finishTask} 交给自动拉黑。
+     */
+    private void doEnergySceneTask(JSONArray childTaskTypeList) {
+        try {
+            for (int i = 0; i < childTaskTypeList.length(); i++) {
+                JSONObject taskInfo = childTaskTypeList.getJSONObject(i);
+                JSONObject taskBaseInfo = taskInfo.getJSONObject("taskBaseInfo");
+                JSONObject bizInfo = new JSONObject(taskBaseInfo.getString("bizInfo"));
+                String taskType = taskBaseInfo.getString("taskType");
+                String taskTitle = bizInfo.optString("taskTitle", taskType);
+                if (!TaskStatus.TODO.name().equals(taskBaseInfo.getString("taskStatus"))) {
+                    continue;
+                }
+                if (AntForestVitalityTaskList.getValue().contains(blackTaskKey(taskTitle))) {
+                    continue;
+                }
+                finishTask(taskBaseInfo.getString("sceneCode"), taskType, taskTitle);
+            }
+        } catch (Throwable t) {
+            Log.err(TAG, "doEnergySceneTask err:", t);
         }
     }
 
@@ -3001,11 +3042,11 @@ public class AntForestV2 extends ModelTask {
             JSONObject combineHandlerVOMap = joMiscHomes.optJSONObject("combineHandlerVOMap");
             if (!combineHandlerVOMap.has("usingProp")) {
                 // 当前没有任何道具在使用：保护罩要能从头用一张，其余道具保持原行为（不可用）
-                return canStartWhenNotInUse(propGroupType) ? 0 : -1;
+                return canStartWhenNotInUse(propGroupType) ? shieldFallback(now) : -1;
             }
             JSONObject usingProp = combineHandlerVOMap.optJSONObject("usingProp");
             if (!usingProp.has("userPropVOS")) {
-                return canStartWhenNotInUse(propGroupType) ? 0 : -1;
+                return canStartWhenNotInUse(propGroupType) ? shieldFallback(now) : -1;
             }
             JSONArray userPropVOS = usingProp.getJSONArray("userPropVOS");
             for (int i = 0; i < userPropVOS.length(); i++) {
@@ -3051,11 +3092,55 @@ public class AntForestV2 extends ModelTask {
                     }
                 }
             }
-            return 0;
+            // 走到这里说明 usingProp 列表里没有该道具：保护罩实测就不在其中，改按主页真实到期时间判断
+            return canStartWhenNotInUse(propGroupType) ? shieldFallback(now) : 0;
         } catch (Throwable th) {
             Log.err(TAG, "useDoubleCard err:", th);
         }
         return -1;
+    }
+
+    /**
+     * 保护罩在道具接口里查不到时的兜底：按个人主页的到期时间判断是否续用
+     * （返回值同 {@link #continuousUseCardCheak}：-1 不可用 / 0 无保护可用 / >0 剩余毫秒）。
+     */
+    private long shieldFallback(long now) {
+        long duringTime = queryShieldEndTime() - now;
+        if (duringTime <= 0) {
+            return 0;
+        }
+        return duringTime / (1000 * 60) < 60 * continuousUseShieldHour.getValue() ? duringTime : -1;
+    }
+
+    /**
+     * 保护罩的真实到期时间（毫秒），未在保护中返回 0。
+     * <p>{@code queryMiscInfo} 的 usingProp 实测不下发 shield，只能从个人主页的 usingUserPropsNew 取。
+     */
+    private long queryShieldEndTime() {
+        try {
+            JSONObject joHomePage = new JSONObject(AntForestRpcCall.queryHomePage());
+            if (!MessageUtil.checkResultCode(TAG, joHomePage)) {
+                return 0;
+            }
+            JSONArray ja = joHomePage.optJSONArray("loginUserUsingPropNew");
+            if (ja == null || ja.length() == 0) {
+                ja = joHomePage.optJSONArray("usingUserPropsNew");
+            }
+            if (ja == null) {
+                return 0;
+            }
+            long endTime = 0;
+            for (int i = 0; i < ja.length(); i++) {
+                JSONObject prop = ja.getJSONObject(i);
+                if ("shield".equals(prop.optString("propGroup"))) {
+                    endTime = Math.max(endTime, prop.optLong("endTime"));
+                }
+            }
+            return endTime;
+        } catch (Throwable th) {
+            Log.err(TAG, "queryShieldEndTime err:", th);
+        }
+        return 0;
     }
 
     private String useRobExpandCardFactor() {
@@ -3179,6 +3264,17 @@ public class AntForestV2 extends ModelTask {
                                     rightCard = forestBagProp;
                                 }
                             }*/
+                    }
+                }
+            }
+            // 保护罩的永久卡（ENERGY_SHIELD）服务端不下发 recentExpireTime，会被上面按到期时间的筛选排除，
+            // 导致背包里有罩也一张都用不了，故补一次兜底；限时保护罩仍优先于它
+            if (rightCard == null && "shield".equals(propGroupType)) {
+                for (int i = 0; i < forestPropVOList.length(); i++) {
+                    JSONObject forestBagProp = forestPropVOList.getJSONObject(i);
+                    if ("shield".equals(forestBagProp.optString("propGroup")) && !forestBagProp.has("recentExpireTime")) {
+                        rightCard = forestBagProp;
+                        break;
                     }
                 }
             }

@@ -34,9 +34,6 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.basic.TextField
-import top.yukonga.miuix.kmp.preference.ArrowPreference
-import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 // ============ 自动切号配置（独立于 ConfigV2 的 account_switch_settings.json）============
@@ -161,17 +158,21 @@ fun ExtensionsScreen(activity: MiuixExtensionsActivity) {
                 var activation by remember { mutableStateOf(initial.third) }
                 var showIntervalDialog by remember { mutableStateOf(false) }
 
-                SwitchPreference(
+                SxSettingRow(
                     title = "启用自动切号",
                     summary = "按间隔自动轮换登录的支付宝账号",
-                    checked = switchEnabled,
-                    onCheckedChange = { on ->
-                        if (writeAccountSwitchSettings(on, intervalSeconds, activation)) {
-                            switchEnabled = on
-                            ToastUtil.show(context, if (on) "自动切号已开启" else "自动切号已关闭")
-                        } else {
-                            ToastUtil.show(context, "保存失败")
-                        }
+                    trailing = {
+                        SxSwitch(
+                            checked = switchEnabled,
+                            onCheckedChange = { on ->
+                                if (writeAccountSwitchSettings(on, intervalSeconds, activation)) {
+                                    switchEnabled = on
+                                    ToastUtil.show(context, if (on) "自动切号已开启" else "自动切号已关闭")
+                                } else {
+                                    ToastUtil.show(context, "保存失败")
+                                }
+                            }
+                        )
                     }
                 )
                 CardArrowPreference(
@@ -191,7 +192,7 @@ fun ExtensionsScreen(activity: MiuixExtensionsActivity) {
                             Column {
                                 Text("切换间隔（分钟）", color = MiuixTheme.colorScheme.onBackground)
                                 Spacer(Modifier.height(8.dp))
-                                TextField(
+                                SxTextField(
                                     value = minutesText,
                                     onValueChange = { minutesText = it },
                                     label = "分钟",
@@ -262,7 +263,7 @@ fun ExtensionsScreen(activity: MiuixExtensionsActivity) {
                                 color = MiuixTheme.colorScheme.onBackground
                             )
                             Spacer(Modifier.height(8.dp))
-                            TextField(
+                            SxTextField(
                                 value = inputText,
                                 onValueChange = { inputText = it },
                                 label = "路径ID",

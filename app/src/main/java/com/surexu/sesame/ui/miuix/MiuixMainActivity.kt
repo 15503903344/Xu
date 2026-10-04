@@ -96,17 +96,10 @@ import com.surexu.sesame.util.idMap.UserIdMap
 import androidx.compose.ui.window.Dialog
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.BasicComponentColors
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.basic.TextField
-import top.yukonga.miuix.kmp.preference.ArrowPreference
-import top.yukonga.miuix.kmp.preference.RadioButtonLocation
-import top.yukonga.miuix.kmp.preference.RadioButtonPreference
-import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.io.File
 import java.util.Calendar
@@ -858,7 +851,7 @@ fun LogSwitchRow(title: String, checked: Boolean, onClick: () -> Unit, onChecked
                 fontSize = 16.sp,
                 color = MiuixTheme.colorScheme.onBackground
             )
-            Switch(checked = checked, onCheckedChange = onCheckedChange)
+            SxSwitch(checked = checked, onCheckedChange = onCheckedChange)
         }
     }
 }
@@ -875,9 +868,7 @@ fun openLog(activity: MiuixMainActivity, logType: LogType) {
     }
 }
 
-/** 配置分组入口页(图2)的图标与描述映射:全部 ModelGroup 均展示,不隐藏空分组。
- *  图标统一改用 Material 矢量图标替代此前的 emoji：emoji 在不同机型/字体下的字重、大小、
- *  彩色渲染都不一致，和纯白拟态底色放在一起显乱；矢量图标可统一尺寸与主色，观感更整齐。 */
+/** 配置分组的图标与主色映射。 */
 internal val GROUP_ICON: Map<ModelGroup, ImageVector> = mapOf(
     ModelGroup.BASE to Icons.Filled.Tune,
     ModelGroup.FOREST to Icons.Filled.Forest,
@@ -916,72 +907,8 @@ internal val GROUP_DESC: Map<ModelGroup, String> = mapOf(
 )
 
 /**
- * 配置分组入口条目(图2):左侧拟态凸起圆形图标槽 + 组名与描述 + 右侧 › 箭头。
- * 图标槽内为「低饱和主色浅底 + 同色矢量图标」，比彩色 emoji 更整齐、也更贴合拟态风格。
- * 每个分组独立一张纯白拟态卡片（一个功能一张卡片）。
+ * 配置分组入口网格卡（2 列）已由 SxGroupGridCard 承载。
  */
-@Composable
-fun GroupEntryRow(
-    icon: ImageVector,
-    iconTint: Color,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    ItemCard(
-        modifier = Modifier.clickable(onClick = onClick),
-        verticalPadding = 10.dp,
-    ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                Modifier
-                    .size(46.dp)
-                    .neuRaised(CircleShape, 6.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(iconTint.copy(alpha = 0.12f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = title,
-                        tint = iconTint,
-                        modifier = Modifier.size(19.dp)
-                    )
-                }
-            }
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MiuixTheme.colorScheme.onBackground
-                )
-                if (subtitle.isNotBlank()) {
-                    Text(
-                        text = subtitle,
-                        fontSize = 12.sp,
-                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary
-                    )
-                }
-            }
-            Text(
-                text = "›",
-                fontSize = 22.sp,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                modifier = Modifier.padding(horizontal = 6.dp)
-            )
-        }
-    }
-}
 
 @Composable
 fun ConfigTab(activity: MiuixMainActivity) {
@@ -1205,31 +1132,10 @@ fun ConfigTab(activity: MiuixMainActivity) {
                 )
         }
     }
-    TextField(
-        value = searchText,
-        onValueChange = { searchText = it },
-        label = "搜索配置",
-        leadingIcon = {
-            Icon(
-                imageVector = Icons.Filled.Search,
-                contentDescription = "搜索",
-                tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                modifier = Modifier.padding(start = 12.dp)
-            )
-        },
-        trailingIcon = {
-            if (searchText.isNotEmpty()) {
-                Text(
-                    "×",
-                    fontSize = 16.sp,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    modifier = Modifier.padding(end = 12.dp).clickable { searchText = "" }
-                )
-            }
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
+    SxSearchBar(
+        query = searchText,
+        onQueryChange = { searchText = it },
+        placeholder = "搜索配置"
     )
     Spacer(Modifier.height(4.dp))
 
@@ -1248,25 +1154,42 @@ fun ConfigTab(activity: MiuixMainActivity) {
             )
         }
     } else {
-        CardList {
-            filteredGroups.forEach { g ->
-                GroupEntryRow(
-                    icon = GROUP_ICON[g] ?: Icons.Filled.Widgets,
-                    iconTint = GROUP_ICON_TINT[g] ?: MiuixTheme.colorScheme.primary,
-                    title = g.getName(),
-                    subtitle = GROUP_DESC[g] ?: "",
-                    onClick = {
-                        val intent = Intent(context, MiuixGroupFieldsActivity::class.java)
-                        intent.putExtra(MiuixGroupFieldsActivity.EXTRA_USER_ID, selectedUserId)
-                        intent.putExtra(MiuixGroupFieldsActivity.EXTRA_GROUP_CODE, g.name)
-                        context.startActivity(intent)
+        filteredGroups.chunked(2).forEach { pair ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 5.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                pair.forEach { g ->
+                    Box(Modifier.weight(1f)) {
+                        SxGroupGridCard(
+                            icon = GROUP_ICON[g] ?: Icons.Filled.Widgets,
+                            tint = GROUP_ICON_TINT[g] ?: MiuixTheme.colorScheme.primary,
+                            title = g.getName(),
+                            subtitle = GROUP_DESC[g] ?: "",
+                            count = groupEnabledCount(g),
+                            onClick = {
+                                val intent = Intent(context, MiuixGroupFieldsActivity::class.java)
+                                intent.putExtra(MiuixGroupFieldsActivity.EXTRA_USER_ID, selectedUserId)
+                                intent.putExtra(MiuixGroupFieldsActivity.EXTRA_GROUP_CODE, g.name)
+                                context.startActivity(intent)
+                            }
+                        )
                     }
-                )
+                }
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
             }
         }
     }
     Spacer(Modifier.height(16.dp))
 }
+
+/** 统计分组下已开启的布尔开关数。 */
+private fun groupEnabledCount(g: ModelGroup): Int =
+    Model.getGroupModelConfig(g).values.sumOf { mc ->
+        mc.fields.values.count { f -> f.type == "BOOLEAN" && (f.getValue() as? Boolean) == true }
+    }
 
 @Composable
 fun AccountPickerDialog(
@@ -1292,40 +1215,27 @@ fun AccountPickerDialog(
                     color = MiuixTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
                 )
-                LazyColumn(Modifier.weight(1f, fill = false)) {
+                LazyColumn(
+                    Modifier.weight(1f, fill = false),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                     items(items, key = { it.first ?: "" }) { (userId, name, avatar) ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 3.dp)
-                                .background(
-                                    if (sel == userId) MiuixTheme.colorScheme.primaryContainer else androidx.compose.ui.graphics.Color.Transparent,
-                                    RoundedCornerShape(12.dp)
-                                )
-                                .padding(horizontal = 8.dp, vertical = 3.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (!avatar.isNullOrBlank()) {
-                                MiuixAsyncAvatar(
-                                    url = avatar,
-                                    modifier = Modifier
-                                        .padding(end = 8.dp)
-                                        .size(36.dp),
-                                    cornerRadius = 12,
-                                    circle = true
-                                )
-                            }
-                            RadioButtonPreference(
-                                title = name,
-                                selected = sel == userId,
-                                titleColor = BasicComponentColors(
-                                    color = if (sel == userId) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface,
-                                    disabledColor = MiuixTheme.colorScheme.disabledOnSurface
-                                ),
-                                onClick = { sel = userId },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
+                        SxSelectableCard(
+                            title = name,
+                            checked = sel == userId,
+                            single = true,
+                            avatar = {
+                                if (!avatar.isNullOrBlank()) {
+                                    MiuixAsyncAvatar(
+                                        url = avatar,
+                                        modifier = Modifier.size(36.dp),
+                                        cornerRadius = 12,
+                                        circle = true
+                                    )
+                                }
+                            },
+                            onClick = { sel = userId }
+                        )
                     }
                 }
                 Spacer(Modifier.height(8.dp))
