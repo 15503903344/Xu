@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.VerticalAlignBottom
+import androidx.compose.material.icons.filled.VerticalAlignTop
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -363,6 +364,32 @@ fun LogScreen(activity: MiuixLogViewerActivity, logType: LogType) {
                             )
                             Text(
                                 text = "滑到底部",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MiuixTheme.colorScheme.primary
+                            )
+                        }
+                    } else if (filteredEntries.size > 1) {
+                        // ── 一键滑动到顶部（最旧一条）────────────────────────
+                        // 停在最新位置时出现；点击后动画到最旧一条历史
+                        Row(
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 18.dp)
+                                .neuRaised(RoundedCornerShape(50), 6.dp)
+                                .clickable { scope.launch { listState.animateScrollToItem(filteredEntries.size - 1) } }
+                                .padding(horizontal = 16.dp, vertical = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.VerticalAlignTop,
+                                contentDescription = "滑动到顶部",
+                                tint = MiuixTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "滑到顶部",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = MiuixTheme.colorScheme.primary

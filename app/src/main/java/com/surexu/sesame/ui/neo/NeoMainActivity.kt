@@ -27,6 +27,7 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -446,6 +447,7 @@ class NeoMainActivity : AppCompatActivity() {
             tabBar.visibility = View.GONE
             findViewById<View>(R.id.neo_logs_list).visibility = View.GONE
             findViewById<View>(R.id.neo_logs_empty).visibility = View.VISIBLE
+            findViewById<View>(R.id.neo_logs_scroll_buttons).visibility = View.GONE
             return
         }
         if (currentLogTag !in visibleTabs) {
@@ -508,6 +510,16 @@ class NeoMainActivity : AppCompatActivity() {
         findViewById<View>(R.id.neo_logs_more_btn).setOnClickListener {
             haptic(it)
             showLogMoreDialog()
+        }
+
+        // 浮动滚动按钮：滚到顶部 / 滚到底部（日志列表较长时一键定位）
+        findViewById<View>(R.id.neo_logs_scroll_top_btn).setOnClickListener {
+            haptic(it)
+            findViewById<ScrollView>(R.id.neo_logs_scroll).fullScroll(ScrollView.FOCUS_UP)
+        }
+        findViewById<View>(R.id.neo_logs_scroll_bottom_btn).setOnClickListener {
+            haptic(it)
+            findViewById<ScrollView>(R.id.neo_logs_scroll).fullScroll(ScrollView.FOCUS_DOWN)
         }
     }
 
@@ -645,6 +657,7 @@ class NeoMainActivity : AppCompatActivity() {
     private fun renderLogEntries() {
         val list = findViewById<LinearLayout>(R.id.neo_logs_list)
         val empty = findViewById<View>(R.id.neo_logs_empty)
+        val scrollButtons = findViewById<View>(R.id.neo_logs_scroll_buttons)
         val query = findViewById<EditText>(R.id.neo_logs_search_input).text.toString().trim()
         val filtered = logEntries.filter { e ->
             query.isEmpty() ||
@@ -655,10 +668,12 @@ class NeoMainActivity : AppCompatActivity() {
         if (filtered.isEmpty()) {
             empty.visibility = View.VISIBLE
             list.visibility = View.GONE
+            scrollButtons.visibility = View.GONE
             return
         }
         empty.visibility = View.GONE
         list.visibility = View.VISIBLE
+        scrollButtons.visibility = View.VISIBLE
         filtered.forEach { entry ->
             val card = layoutInflater.inflate(R.layout.neo_item_log_entry, list, false)
             card.findViewById<TextView>(R.id.entry_tag).text = entry.tag ?: "日志"

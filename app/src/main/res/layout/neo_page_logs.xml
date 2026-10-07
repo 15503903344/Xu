@@ -1,18 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 日志页：分类标签 + 日志内容空态（对应新版截图：调试后有运行标签） -->
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- 日志页：固定头部（标题/搜索/分类标签）+ 仅日志内容区滚动 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
-    android:scrollbars="none">
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingHorizontal="20dp"
-        android:paddingTop="18dp"
-        android:paddingBottom="28dp">
+    android:orientation="vertical">
 
         <!-- 头部：居中标题 + 右上角图标（搜索/刷新/更多） -->
         <FrameLayout
@@ -118,6 +109,23 @@
                 android:orientation="horizontal" />
         </HorizontalScrollView>
 
+        <!-- 日志内容区：仅列表滚动，头部选项保持固定 -->
+        <ScrollView
+            android:id="@+id/neo_logs_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:fillViewport="true"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="20dp"
+                android:paddingTop="18dp"
+                android:paddingBottom="28dp">
+
         <!-- 日志内容空态卡（白底水印） -->
         <LinearLayout
             android:id="@+id/neo_logs_empty"
@@ -157,13 +165,51 @@
         </LinearLayout>
 
         <!-- 日志条目列表容器（每条为拟态卡片，由 Kotlin 填充） -->
-        <LinearLayout
-            android:id="@+id/neo_logs_list"
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:orientation="vertical"
-            android:visibility="gone" />
+            android:layout_marginTop="16dp">
 
+            <LinearLayout
+                android:id="@+id/neo_logs_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone" />
+
+            <!-- 浮动滚动按钮：滚到顶部 / 滚到底部（有日志时显示） -->
+            <LinearLayout
+                android:id="@+id/neo_logs_scroll_buttons"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end|bottom"
+                android:layout_marginBottom="8dp"
+                android:layout_marginEnd="4dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/neo_logs_scroll_top_btn"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/neu_scroll_btn"
+                    android:contentDescription="@null"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_neo_scroll_top" />
+
+                <ImageView
+                    android:id="@+id/neo_logs_scroll_bottom_btn"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="10dp"
+                    android:background="@drawable/neu_scroll_btn"
+                    android:contentDescription="@null"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_neo_scroll_bottom" />
+            </LinearLayout>
+            </FrameLayout>
+
+            </LinearLayout>
+        </ScrollView>
     </LinearLayout>
-</ScrollView>

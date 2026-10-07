@@ -27,7 +27,7 @@ android {
     compileSdk 37
     namespace 'com.surexu.sesame'
     defaultConfig {
-        applicationId "com.surexu.neoui"
+        applicationId "com.surexu.sesame"
         minSdk 26
         //noinspection ExpiredTargetSdkVersion
         targetSdk 34
