@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -53,8 +54,15 @@ import com.surexu.sesame.util.ToastUtil
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.CheckboxPreference
+import top.yukonga.miuix.kmp.preference.RadioButtonPreference
+import top.yukonga.miuix.kmp.preference.SliderPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlin.math.roundToInt
 
@@ -138,43 +146,66 @@ class MiuixGroupFieldsActivity : MiuixBaseActivity() {
 }
 
 /**
- * 字段页行类型：一个模型 = 一组字段卡（每字段一张独立卡片）；BASE 组的全局开关独立成小卡。
+ * 扁平化后的列表行：把「模型标题」和「字段」都提升为 LazyColumn 的独立 item，
+ * 让虚拟化真正下沉到字段级。
+ *
+ * 原先每个 ModelConfig 是一个 item、内部用 fields.forEach 组合全部字段，
+ * 导致 Forest 组（77 个字段）一旦进入视口就要一次性组合、measure、layout 所有字段。
  */
 private sealed interface GroupFieldsRow {
     val key: String
 
-    data class Model(
+    data class Header(override val key: String, val title: String) : GroupFieldsRow
+
+    data class Field(
         override val key: String,
-        val mc: ModelConfig,
-        val fields: List<ModelField<*>>
+        val modelCode: String,
+        val field: ModelField<*>,
+        val first: Boolean,
+        val last: Boolean
     ) : GroupFieldsRow
 
+    /** 走 AppConfig 全局配置（非 ConfigV2 字段）的手写开关行 */
     data class AppConfigSwitch(
         override val key: String,
         val title: String
     ) : GroupFieldsRow
 }
 
-private val SELECT_TYPES = setOf("SELECT", "SELECT_ONE", "SELECT_AND_COUNT", "SELECT_AND_COUNT_ONE")
-
 @Composable
 fun GroupFieldsContent(activity: MiuixGroupFieldsActivity, userId: String?, groupCode: String, group: ModelGroup) {
-    // 父字段开关/选项变化后，依赖其显示的子字段需重新计算可见性
+    // 父字段开关/选项变化后，依赖其显示的子字段需重新计算可见性，
+    // 用 depVersion 作为 remember 键触发扁平行列表重建。
     var depVersion by remember { mutableStateOf(0) }
+    // 字段对象由 ConfigV2 单例持有，引用稳定；仅当分组或依赖版本变化时才重建。
     val rows = remember(group, depVersion) {
         val list = ArrayList<GroupFieldsRow>()
         Model.getGroupModelConfig(group).values.forEach { mc ->
             val fields = mc.fields.values.toList()
             if (fields.isEmpty()) return@forEach
-            val visibleFields = fields.filter { f -> f.isVisible(mc) }
-            if (visibleFields.isEmpty()) return@forEach
-            list.add(GroupFieldsRow.Model(key = "model:${mc.getCode()}", mc = mc, fields = visibleFields))
-            // 「开启状态栏禁删」「屏蔽部分弹窗」等全局开关跟随 BASE 组 debugMode 展示
-            if (groupCode == "BASE" && visibleFields.any { it.code == "debugMode" }) {
-                list.add(GroupFieldsRow.AppConfigSwitch(key = "appcfg:enableOnGoing", title = "开启状态栏禁删"))
-                list.add(GroupFieldsRow.AppConfigSwitch(key = "appcfg:closeCaptchaDialog", title = "屏蔽部分弹窗"))
-                list.add(GroupFieldsRow.AppConfigSwitch(key = "appcfg:showToast", title = "气泡提示"))
-                list.add(GroupFieldsRow.AppConfigSwitch(key = "appcfg:toastOffsetY", title = "气泡纵向偏移"))
+            list.add(GroupFieldsRow.Header(key = "header:${mc.getCode()}", title = mc.name ?: ""))
+            // 过滤：依赖父字段但父未激活的子字段
+            val visibleFields = fields.filter { f ->
+                f.isVisible(mc)
+            }
+            visibleFields.forEachIndexed { index, field ->
+                list.add(
+                    GroupFieldsRow.Field(
+                        key = "field:${mc.getCode()}:${field.code}",
+                        modelCode = mc.getCode(),
+                        field = field,
+                        first = index == 0,
+                        last = index == visibleFields.lastIndex
+                    )
+                )
+                // 「开启状态栏禁删」「屏蔽部分弹窗」走 AppConfig 全局配置（非 ConfigV2 字段），
+                // 历史位置在配置页基础分组、开启抓包(debugMode)下方，故在字段行后插入手写开关行。
+                if (groupCode == "BASE" && field.code == "debugMode") {
+                    list.add(GroupFieldsRow.AppConfigSwitch(key = "appcfg:enableOnGoing", title = "开启状态栏禁删"))
+                    list.add(GroupFieldsRow.AppConfigSwitch(key = "appcfg:closeCaptchaDialog", title = "屏蔽部分弹窗"))
+                    list.add(GroupFieldsRow.AppConfigSwitch(key = "appcfg:showToast", title = "气泡提示"))
+                    list.add(GroupFieldsRow.AppConfigSwitch(key = "appcfg:toastOffsetY", title = "气泡纵向偏移"))
+                }
             }
         }
         list
@@ -206,79 +237,19 @@ fun GroupFieldsContent(activity: MiuixGroupFieldsActivity, userId: String?, grou
                 .padding(padding)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             contentPadding = PaddingValues(vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(rows, key = { it.key }) { row ->
                 when (row) {
-                    is GroupFieldsRow.Model -> ModelSection(
+                    is GroupFieldsRow.Header -> SmallTitle(text = row.title)
+                    is GroupFieldsRow.Field -> GroupFieldRow(
                         activity = activity,
                         userId = userId,
                         groupCode = groupCode,
-                        mc = row.mc,
-                        fields = row.fields,
+                        row = row,
                         onDependencyChanged = { depVersion++ }
                     )
-                    is GroupFieldsRow.AppConfigSwitch -> AppConfigSwitchCard(activity = activity, row = row)
-                }
-            }
-        }
-    }
-}
-
-/** 模型区块：标题行（模型名 + 已开徽标，非卡片）+ 每字段一张独立卡片（一卡一功能）。 */
-@Composable
-private fun ModelSection(
-    activity: MiuixGroupFieldsActivity,
-    userId: String?,
-    groupCode: String,
-    mc: ModelConfig,
-    fields: List<ModelField<*>>,
-    onDependencyChanged: () -> Unit
-) {
-    val switches = fields.filter { it.type == "BOOLEAN" }
-    val enabled = switches.count { (it.getValue() as? Boolean) == true }
-    Column(
-        Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        // 模型区块标题（非卡片）：模型名 + 已开徽标
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = mc.name ?: "",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                color = MiuixTheme.colorScheme.onBackground,
-                modifier = Modifier.weight(1f)
-            )
-            SxBadge(text = "已开 $enabled/${switches.size}", tint = MiuixTheme.colorScheme.primary)
-        }
-        fields.forEach { field ->
-            if (field.type in SELECT_TYPES) {
-                ItemCard {
-                    SxSelectRow(
-                        name = field.name ?: "",
-                        summary = null,
-                        onClick = {
-                            activity.startActivity(
-                                Intent(activity, MiuixSelectionEditActivity::class.java).apply {
-                                    putExtra(MiuixGroupFieldsActivity.EXTRA_USER_ID, userId)
-                                    putExtra(MiuixGroupFieldsActivity.EXTRA_GROUP_CODE, groupCode)
-                                    putExtra(MiuixSelectionEditActivity.EXTRA_FIELD_CODE, field.code)
-                                    putExtra(MiuixSelectionEditActivity.EXTRA_MODEL_CODE, mc.getCode())
-                                }
-                            )
-                        }
-                    )
-                }
-            } else {
-                // 一卡一功能：每字段一张独立卡片；内部内边距由 FieldItem/SxSettingRow 自持
-                ItemCard(horizontalPadding = 0.dp, verticalPadding = 0.dp) {
-                    FieldItem(field = field, onFieldChanged = onDependencyChanged)
+                    is GroupFieldsRow.AppConfigSwitch -> AppConfigSwitchRow(activity = activity, row = row)
                 }
             }
         }
@@ -286,61 +257,90 @@ private fun ModelSection(
 }
 
 /**
- * AppConfig 全局配置开关小卡（非 ConfigV2 字段）：
- * 逻辑读 AppConfig.INSTANCE，开关直接读写 AppConfig 并即时落盘 + 广播重载。
+ * 单个字段行：每个字段独立一张纯白拟态卡片（一个功能一张卡片）。
+ * 展开的编辑区与字段行同卡展示，LazyColumn 仍可逐字段复用/回收。
  */
 @Composable
-private fun AppConfigSwitchCard(activity: MiuixGroupFieldsActivity, row: GroupFieldsRow.AppConfigSwitch) {
+private fun GroupFieldRow(
+    activity: MiuixGroupFieldsActivity,
+    userId: String?,
+    groupCode: String,
+    row: GroupFieldsRow.Field,
+    onDependencyChanged: () -> Unit
+) {
+    val field = row.field
+    val isSelect = field.type in listOf("SELECT", "SELECT_ONE", "SELECT_AND_COUNT", "SELECT_AND_COUNT_ONE")
+    ItemCard(verticalPadding = if (isSelect) 8.dp else 5.dp) {
+        if (isSelect) {
+            ArrowPreference(
+                title = field.name ?: "",
+                onClick = {
+                    activity.startActivity(
+                        Intent(activity, MiuixSelectionEditActivity::class.java).apply {
+                            putExtra(MiuixGroupFieldsActivity.EXTRA_USER_ID, userId)
+                            putExtra(MiuixGroupFieldsActivity.EXTRA_GROUP_CODE, groupCode)
+                            putExtra(MiuixSelectionEditActivity.EXTRA_FIELD_CODE, field.code)
+                            putExtra(MiuixSelectionEditActivity.EXTRA_MODEL_CODE, row.modelCode)
+                        }
+                    )
+                }
+            )
+        } else {
+            // 只写内存，落盘统一在 saveAndFinish() / onBackPressed() 完成
+            FieldItem(field = field, onFieldChanged = onDependencyChanged)
+        }
+    }
+}
+
+/**
+ * AppConfig 全局配置开关行（非 ConfigV2 字段）：
+ * 「开启状态栏禁删」「屏蔽部分弹窗」「气泡提示」「气泡纵向偏移」逻辑读 AppConfig.INSTANCE
+ * （NotificationUtil / CaptchaHook / ToastUtil），因此开关直接读写 AppConfig 并即时落盘 + 广播重载，
+ * 不参与本页退出的统一 ConfigV2 保存。
+ */
+@Composable
+private fun AppConfigSwitchRow(activity: MiuixGroupFieldsActivity, row: GroupFieldsRow.AppConfigSwitch) {
     ItemCard(verticalPadding = 5.dp) {
         when (row.key) {
             "appcfg:enableOnGoing" -> {
                 var checked by remember { mutableStateOf(AppConfig.INSTANCE.enableOnGoing ?: false) }
-                SxSettingRow(
+                SwitchPreference(
                     title = row.title,
-                    trailing = {
-                        SxSwitch(
-                            checked = checked,
-                            onCheckedChange = {
-                                checked = it
-                                AppConfig.INSTANCE.enableOnGoing = it
-                                AppConfig.save()
-                                activity.sendBroadcast(Intent("com.eg.android.AlipayGphone.sesame.reloadConfig"))
-                            }
-                        )
+                    summary = null,
+                    checked = checked,
+                    onCheckedChange = {
+                        checked = it
+                        AppConfig.INSTANCE.enableOnGoing = it
+                        AppConfig.save()
+                        activity.sendBroadcast(Intent("com.eg.android.AlipayGphone.sesame.reloadConfig"))
                     }
                 )
             }
             "appcfg:closeCaptchaDialog" -> {
                 var checked by remember { mutableStateOf(AppConfig.INSTANCE.closeCaptchaDialog ?: true) }
-                SxSettingRow(
+                SwitchPreference(
                     title = row.title,
-                    trailing = {
-                        SxSwitch(
-                            checked = checked,
-                            onCheckedChange = {
-                                checked = it
-                                AppConfig.INSTANCE.closeCaptchaDialog = it
-                                AppConfig.save()
-                                activity.sendBroadcast(Intent("com.eg.android.AlipayGphone.sesame.reloadConfig"))
-                            }
-                        )
+                    summary = null,
+                    checked = checked,
+                    onCheckedChange = {
+                        checked = it
+                        AppConfig.INSTANCE.closeCaptchaDialog = it
+                        AppConfig.save()
+                        activity.sendBroadcast(Intent("com.eg.android.AlipayGphone.sesame.reloadConfig"))
                     }
                 )
             }
             "appcfg:showToast" -> {
                 var checked by remember { mutableStateOf(AppConfig.INSTANCE.showToast ?: true) }
-                SxSettingRow(
+                SwitchPreference(
                     title = row.title,
-                    trailing = {
-                        SxSwitch(
-                            checked = checked,
-                            onCheckedChange = {
-                                checked = it
-                                AppConfig.INSTANCE.showToast = it
-                                AppConfig.save()
-                                activity.sendBroadcast(Intent("com.eg.android.AlipayGphone.sesame.reloadConfig"))
-                            }
-                        )
+                    summary = null,
+                    checked = checked,
+                    onCheckedChange = {
+                        checked = it
+                        AppConfig.INSTANCE.showToast = it
+                        AppConfig.save()
+                        activity.sendBroadcast(Intent("com.eg.android.AlipayGphone.sesame.reloadConfig"))
                     }
                 )
             }
@@ -348,13 +348,13 @@ private fun AppConfigSwitchCard(activity: MiuixGroupFieldsActivity, row: GroupFi
                 var text by remember { mutableStateOf((AppConfig.INSTANCE.toastOffsetY ?: 0).toString()) }
                 var expanded by remember { mutableStateOf(false) }
                 Column {
-                    SxSettingRow(
+                    ArrowPreference(
                         title = row.title,
                         summary = if (text.isEmpty()) "0 px（正数向下）" else "$text px（正数向下）",
                         onClick = { expanded = !expanded }
                     )
                     if (expanded) {
-                        SxTextField(
+                        TextField(
                             value = text,
                             onValueChange = { newText ->
                                 val filtered = newText.filterIndexed { index, c -> c.isDigit() || (c == '-' && index == 0) }
@@ -365,7 +365,8 @@ private fun AppConfigSwitchCard(activity: MiuixGroupFieldsActivity, row: GroupFi
                                     activity.sendBroadcast(Intent("com.eg.android.AlipayGphone.sesame.reloadConfig"))
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            label = ""
                         )
                     }
                 }

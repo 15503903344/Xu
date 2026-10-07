@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 日志分类标签选中态：主色软底药丸 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/neo_primary_soft" />
+    <corners android:radius="999dp" />
+</shape>

@@ -656,9 +656,8 @@ public class MessageUtil {
      * 失败 `<名>黑白名单设置失败`。
      *
      * @param displayName 列表中文名（如 "森林活力值任务"），仅用于日志
-     * @param listTitle   列表字段名（如 "AntForestHuntTaskList"），用于登记白名单、与自动拉黑入口对应
      * @param blackList   预置拉黑项（键＝任务标题）
-     * @param whiteList   预置白名单项（仅阻止自动拉黑添加，不删除用户条目）
+     * @param whiteList   预置释放项
      * @param field       目标 SelectModelField（可用性由调用方先判空；为 null 时直接返回）
      */
     public static void syncTaskBlackList(String displayName, String listTitle, Set<String> blackList,

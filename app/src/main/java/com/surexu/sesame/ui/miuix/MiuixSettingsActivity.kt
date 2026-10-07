@@ -1,9 +1,7 @@
 package com.surexu.sesame.ui.miuix
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -18,6 +16,10 @@ import com.surexu.sesame.data.modelFieldExt.ChoiceModelField
 import com.surexu.sesame.data.modelFieldExt.EmptyModelField
 import com.surexu.sesame.data.modelFieldExt.IntegerModelField
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.RadioButtonPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
@@ -53,18 +55,14 @@ private fun FieldItemBody(field: ModelField<*>, onFieldChanged: (() -> Unit)? = 
     when {
         field.type == "BOOLEAN" -> {
             var checked by remember { mutableStateOf(field.value as? Boolean ?: false) }
-            SxSettingRow(
+            SwitchPreference(
                 title = field.name ?: "",
                 summary = field.description,
-                trailing = {
-                    SxSwitch(
-                        checked = checked,
-                        onCheckedChange = {
-                            checked = it
-                            field.setObjectValue(it)
-                            onFieldChanged?.invoke()
-                        }
-                    )
+                checked = checked,
+                onCheckedChange = {
+                    checked = it
+                    field.setObjectValue(it)
+                    onFieldChanged?.invoke()
                 }
             )
         }
@@ -86,7 +84,7 @@ private fun FieldItemBody(field: ModelField<*>, onFieldChanged: (() -> Unit)? = 
                 expanded = false
                 expandedFieldKey = null
             }
-            SxSettingRow(
+            ArrowPreference(
                 title = field.name ?: "",
                 summary = if (limitHint.isEmpty()) current.toString() else "$current$limitHint",
                 onClick = {
@@ -96,8 +94,8 @@ private fun FieldItemBody(field: ModelField<*>, onFieldChanged: (() -> Unit)? = 
             )
             if (expanded) {
                 var text by remember { mutableStateOf(current.toString()) }
-                Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp).padding(horizontal = 16.dp)) {
-                    SxTextField(
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp).padding(horizontal = 16.dp)) {
+                    TextField(
                         value = text,
                         onValueChange = { input ->
                             val filtered = input.filterIndexed { index, c -> c.isDigit() || (c == '-' && index == 0) }
@@ -109,7 +107,8 @@ private fun FieldItemBody(field: ModelField<*>, onFieldChanged: (() -> Unit)? = 
                                 field.setConfigValue(parsed.toString())
                                 onFieldChanged?.invoke()
                             }
-                        }
+                        },
+                        label = "",
                     )
                 }
             }
@@ -120,7 +119,7 @@ private fun FieldItemBody(field: ModelField<*>, onFieldChanged: (() -> Unit)? = 
                 expanded = false
                 expandedFieldKey = null
             }
-            SxSettingRow(
+            ArrowPreference(
                 title = field.name ?: "",
                 summary = field.configValue,
                 onClick = {
@@ -130,27 +129,28 @@ private fun FieldItemBody(field: ModelField<*>, onFieldChanged: (() -> Unit)? = 
             )
             if (expanded) {
                 var text by remember { mutableStateOf(field.configValue ?: "") }
-                Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp).padding(horizontal = 16.dp)) {
-                    SxTextField(
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp).padding(horizontal = 16.dp)) {
+                    TextField(
                         value = text,
                         onValueChange = {
                             text = it
                             field.setObjectValue(it)
                             onFieldChanged?.invoke()
-                        }
+                        },
+                        label = "",
                     )
                 }
             }
         }
 
         field.type == "READ_TEXT" || field.type == "URL_TEXT" -> {
-            SxSettingRow(title = field.name ?: "", summary = field.configValue)
+            ArrowPreference(title = field.name ?: "", summary = field.configValue)
         }
 
         field.type in listOf("SELECT", "SELECT_ONE", "SELECT_AND_COUNT", "SELECT_AND_COUNT_ONE") -> {} // 由 GroupFieldsPage 处理
         field.type == "EMPTY" -> {
             val emf = field as? EmptyModelField
-            SxSettingRow(title = field.name ?: "", onClick = { emf?.clickRunner?.run() })
+            ArrowPreference(title = field.name ?: "", onClick = { emf?.clickRunner?.run() })
         }
 
         field.type == "LIST" -> {
@@ -159,7 +159,7 @@ private fun FieldItemBody(field: ModelField<*>, onFieldChanged: (() -> Unit)? = 
                 expanded = false
                 expandedFieldKey = null
             }
-            SxSettingRow(
+            ArrowPreference(
                 title = field.name ?: "",
                 summary = list.joinToString(","),
                 onClick = {
@@ -169,14 +169,15 @@ private fun FieldItemBody(field: ModelField<*>, onFieldChanged: (() -> Unit)? = 
             )
             if (expanded) {
                 var text by remember { mutableStateOf(list.joinToString("\n")) }
-                Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp).padding(horizontal = 16.dp)) {
-                    SxTextField(
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp).padding(horizontal = 16.dp)) {
+                    TextField(
                         value = text,
                         onValueChange = { input ->
                             text = input
                             field.setObjectValue(input.lines().map { it.trim() }.filter { it.isNotEmpty() })
                             onFieldChanged?.invoke()
                         },
+                        label = "",
                         singleLine = false,
                         maxLines = 8,
                     )
@@ -192,7 +193,7 @@ private fun FieldItemBody(field: ModelField<*>, onFieldChanged: (() -> Unit)? = 
                 expanded = false
                 expandedFieldKey = null
             }
-            SxSettingRow(
+            ArrowPreference(
                 title = field.name ?: "",
                 summary = choiceArray.getOrNull(current),
                 onClick = {
@@ -202,22 +203,18 @@ private fun FieldItemBody(field: ModelField<*>, onFieldChanged: (() -> Unit)? = 
             )
             if (expanded) {
                 var sel by remember { mutableStateOf(current) }
-                Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp)) {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
                     choiceArray.forEachIndexed { index, opt ->
-                        // 点选即生效（不再需要保存按钮），自绘单选卡
-                        SxSelectableCard(
+                        // 点选即生效（不再需要保存按钮）
+                        RadioButtonPreference(
                             title = opt,
-                            checked = sel == index,
-                            single = true,
+                            selected = sel == index,
                             onClick = {
                                 sel = index
                                 field.setObjectValue(index)
                                 onFieldChanged?.invoke()
                             }
                         )
-                        if (index < choiceArray.lastIndex) {
-                            Spacer(Modifier.height(8.dp))
-                        }
                     }
                 }
             }

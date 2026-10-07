@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 单条聊天消息：左右对齐与气泡颜色由 Kotlin 按发送方设置 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingVertical="5dp">
+
+    <TextView
+        android:id="@+id/neo_ai_msg_bubble"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:maxWidth="260dp"
+        android:lineSpacingExtra="2dp"
+        android:paddingHorizontal="13dp"
+        android:paddingVertical="10dp"
+        android:textColor="@color/neo_text_primary"
+        android:textSize="14sp" />
+</LinearLayout>

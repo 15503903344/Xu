@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:width="44dp" android:height="44dp">
+        <shape android:shape="rectangle">
+            <corners android:radius="13dp" />
+            <gradient
+                android:angle="135"
+                android:startColor="#00C2B2"
+                android:endColor="#00A08F" />
+        </shape>
+    </item>
+    <item
+        android:gravity="center"
+        android:width="26dp"
+        android:height="26dp"
+        android:drawable="@drawable/ic_neo_feat_base_white" />
+</layer-list>

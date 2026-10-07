@@ -66,6 +66,59 @@ public class AntMemberRpcCall {
     }
 
     /**
+     * 黄金票收取（兼容）
+     */
+    public static String goldBillCollect() {
+        return ApplicationHook.requestString("com.alipay.wealthgoldtwa.goldbill.v2.index.collect", "[{}]");
+    }
+
+    /**
+     * 黄金票首页数据
+     */
+    public static String queryGoldTicketHome() {
+        try {
+            JSONObject args = new JSONObject();
+            args.put("bizScene", "ch_alipaysearch__chsub_normal");
+            args.put("chInfo", "ch_alipaysearch__chsub_normal");
+            args.put("taskId", "");
+            return ApplicationHook.requestString("com.alipay.wealthgoldtwa.needle.v2.index",
+                    new JSONArray().put(args).toString());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * 黄金票首页场景收取（新版）
+     */
+    public static String goldTicketIndexCollect() {
+        try {
+            JSONObject args = new JSONObject();
+            args.put("directModeDisableCollect", 1);
+            args.put("from", "antfarm");
+            args.put("trigger", "Y");
+            return ApplicationHook.requestString("com.alipay.wealthgoldtwa.needle.index.collect",
+                    new JSONArray().put(args).toString());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * 福利中心刷新
+     */
+    public static String welfareCenterUpdate(int modeBitMask) {
+        try {
+            JSONObject args = new JSONObject();
+            args.put("modeBitMask", modeBitMask);
+            return ApplicationHook.requestString("com.alipay.finaggexpbff.needle.welfareCenter.update",
+                    new JSONArray().put(args).toString());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
      * [新增] 查询黄金票提取页信息
      * 用于获取最新的可用数量、基金ID (productId) 和 赠送份数 (bonusAmount)
      */
@@ -200,6 +253,32 @@ public class AntMemberRpcCall {
     
     public static String queryModularTaskList() {
         return ApplicationHook.requestString("com.alipay.gamecenteruprod.biz.rpc.v3.queryModularTaskList", "[{\"deviceLevel\":\"high\",\"source\":\"ch_appcollect__chsub_my-recentlyUsed\",\"sourceTab\":\"luckydraw\",\"unityDeviceLevel\":\"high\"}]");
+    }
+    
+    /**
+     * 游戏中心（会员场景 xlyy_WJCNJT）首页：任务进度与是否有待领奖励
+     */
+    public static String gameCenterHomePage() {
+        return ApplicationHook.requestString("com.alipay.gamecenteruprod.biz.rpc.external.gamecenter.queryHomePage",
+                "[{\"__git\":\"9e159d58cce04c13a\",\"channelTaskPassThrough\":\"\",\"deviceLevel\":\"high\",\"guideType\":\"\",\"moduleId\":\"\",\"sceneId\":\"xlyy_WJCNJT\",\"source\":\"zfbhy_mc_wkenoz66\",\"unityDeviceLevel\":\"high\"}]");
+    }
+
+    /**
+     * 游戏中心任务流（feedsList 里是「去玩某个游戏」的任务）
+     */
+    public static String gameCenterGameFeeds(int pageNum, int pageSize) {
+        return ApplicationHook.requestString("com.alipay.gamecenteruprod.biz.rpc.external.gamecenter.queryGameFeeds",
+                "[{\"__git\":\"9e159d58cce04c13a\",\"deviceLevel\":\"high\",\"filterGameIdList\":[],\"pageNum\":" + pageNum
+                        + ",\"pageSize\":" + pageSize
+                        + ",\"sceneId\":\"xlyy_WJCNJT\",\"source\":\"zfbhy_mc_wkenoz66\",\"unityDeviceLevel\":\"high\"}]");
+    }
+
+    /**
+     * 游戏中心一键领取任务奖励（整场景批量，无需任务 id）
+     */
+    public static String batchReceiveTaskPrize() {
+        return ApplicationHook.requestString("com.alipay.gamecenteruprod.biz.rpc.external.gamecenter.batchReceiveTaskPrize",
+                "[{\"__git\":\"9e159d58cce04c13a\",\"deviceLevel\":\"high\",\"sceneId\":\"xlyy_WJCNJT\",\"source\":\"zfbhy_mc_wkenoz66\",\"unityDeviceLevel\":\"high\"}]");
     }
     
     public static String queryTaskList() {

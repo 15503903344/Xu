@@ -18,6 +18,8 @@ public final class ViewAppInfo {
 
     private static String appTitle = "";
 
+    private static String appName = "";
+
     private static String appVersion = "";
 
     private static RunType runType = RunType.DISABLE;
@@ -32,6 +34,7 @@ public final class ViewAppInfo {
         if (ViewAppInfo.context == null) {
             ViewAppInfo.context = context;
             appTitle = context.getString(R.string.app_name);
+            appName = appTitle;
             try {
                 PackageInfo packageInfo = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
                 appVersion = packageInfo.versionName;
@@ -48,6 +51,10 @@ public final class ViewAppInfo {
 
     public static String getAppTitle() {
         return appTitle;
+    }
+
+    public static String getAppName() {
+        return appName;
     }
 
     public static String getAppVersion() {

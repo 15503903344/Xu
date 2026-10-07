@@ -10,13 +10,12 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,18 +26,27 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FlipToBack
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,6 +59,7 @@ import com.surexu.sesame.data.ModelField
 import com.surexu.sesame.data.ModelFields
 import com.surexu.sesame.data.modelFieldExt.SelectAndCountModelField
 import com.surexu.sesame.data.modelFieldExt.SelectAndCountOneModelField
+import com.surexu.sesame.data.modelFieldExt.IntegerModelField
 import com.surexu.sesame.data.modelFieldExt.SelectModelField
 import com.surexu.sesame.data.modelFieldExt.SelectOneModelField
 import com.surexu.sesame.entity.AlipayUser
@@ -68,10 +77,18 @@ import kotlinx.coroutines.withTimeout
 import kotlin.coroutines.resume
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import top.yukonga.miuix.kmp.basic.BasicComponentColors
 import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.preference.CheckboxLocation
+import top.yukonga.miuix.kmp.preference.CheckboxPreference
+import top.yukonga.miuix.kmp.preference.RadioButtonLocation
+import top.yukonga.miuix.kmp.preference.RadioButtonPreference
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.preference.SliderPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import kotlin.math.roundToInt
 
 /**
  * 选填编辑页（四级）：编辑 SELECT/SELECT_ONE/SELECT_AND_COUNT/SELECT_AND_COUNT_ONE 类型字段。
@@ -192,8 +209,6 @@ class MiuixSelectionEditActivity : MiuixBaseActivity() {
     }
 }
 
-/** 选填编辑页自绘组件：选项卡片 + 自绘勾选 + 步进器 + 权益卡，全部基于 Sx 组件库。 */
-
 @Composable
 fun SelectionEditContent(
     activity: MiuixSelectionEditActivity,
@@ -280,7 +295,7 @@ fun SelectionEditContent(
         filteredOptions.sortedByDescending { it.id in sel }
     }
 
-    val lazyListState = rememberLazyListState()
+    val lazyListState = androidx.compose.foundation.lazy.rememberLazyListState()
 
     // 会员权益列表（memberPointExchangeBenefitList）：展示图片与价格，支持直接兑换
     val isBenefitList = liveField.code == "memberPointExchangeBenefitList"
@@ -339,6 +354,58 @@ fun SelectionEditContent(
                         ToastUtil.show(activity, "没有未保存的更改")
                     }
                     activity.saveAndFinish()
+                },
+                actions = {
+                    if (!single) {
+                        top.yukonga.miuix.kmp.basic.IconButton(onClick = {
+                            val added = filteredOptions.map { it.id }.filter { it !in sel }
+                            sel = sel + added
+                            var nc = counts
+                            added.forEach { id -> if (id !in nc) nc = nc + (id to (initialCounts[id] ?: 1)) }
+                            counts = nc
+                            dirty = true
+                        }) {
+                            top.yukonga.miuix.kmp.basic.Icon(
+                                imageVector = Icons.Filled.SelectAll,
+                                contentDescription = "全选",
+                                tint = MiuixTheme.colorScheme.onBackground
+                            )
+                        }
+                        top.yukonga.miuix.kmp.basic.IconButton(onClick = {
+                            var ns = sel
+                            var nc = counts
+                            filteredOptions.forEach { opt ->
+                                if (opt.id in ns) {
+                                    ns = ns - opt.id
+                                } else {
+                                    ns = ns + opt.id
+                                    if (opt.id !in nc) nc = nc + (opt.id to (initialCounts[opt.id] ?: 1))
+                                }
+                            }
+                            sel = ns
+                            counts = nc
+                            dirty = true
+                        }) {
+                            top.yukonga.miuix.kmp.basic.Icon(
+                                imageVector = Icons.Filled.FlipToBack,
+                                contentDescription = "反选",
+                                tint = MiuixTheme.colorScheme.onBackground
+                            )
+                        }
+                        top.yukonga.miuix.kmp.basic.IconButton(onClick = {
+                            // 取消本次操作：恢复进入时的勾选快照，不写盘并退出
+                            sel = selectedIds
+                            counts = selectedIds.associateWith { initialCounts[it] ?: 1 }
+                            dirty = false
+                            activity.saveAndFinish()
+                        }) {
+                            top.yukonga.miuix.kmp.basic.Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "取消",
+                                tint = MiuixTheme.colorScheme.onBackground
+                            )
+                        }
+                    }
                 }
             )
         },
@@ -351,89 +418,163 @@ fun SelectionEditContent(
                 .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
             if (!single) {
-                SxSearchBar(
-                    query = searchQuery,
-                    onQueryChange = { searchQuery = it },
-                    placeholder = "搜索"
-                )
-                Spacer(Modifier.height(10.dp))
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        label = "",
+                        modifier = Modifier.weight(1f),
+                        leadingIcon = {
+                            top.yukonga.miuix.kmp.basic.Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Filled.Search,
+                                contentDescription = "搜索",
+                                tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                modifier = Modifier.padding(start = 12.dp)
+                            )
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                top.yukonga.miuix.kmp.basic.Text(
+                                    "×",
+                                    fontSize = 16.sp,
+                                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                    modifier = Modifier.padding(end = 12.dp).clickable { searchQuery = "" }
+                                )
+                            }
+                        }
+                    )
+                }
             }
-            LazyColumn(
-                state = lazyListState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .background(MiuixTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(16.dp))
+                    .border(1.dp, MiuixTheme.colorScheme.outline, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
-                items(count = sortedOptions.size, key = { idx -> sortedOptions[idx].id }) { idx ->
-                    val opt = sortedOptions[idx]
-                    val isChecked = sel.contains(opt.id)
-                    if (isBenefitList) {
-                        SxBenefitCard(
-                            opt = opt as? MemberBenefit,
-                            isChecked = isChecked,
-                            single = single,
-                            onToggle = {
-                                if (single) {
-                                    sel = setOf(opt.id)
-                                } else if (isChecked) {
-                                    sel = sel - opt.id
-                                } else {
-                                    sel = sel + opt.id
+                LazyColumn(
+                    state = lazyListState,
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(vertical = 4.dp)
+                ) {
+                    items(count = sortedOptions.size, key = { idx -> sortedOptions[idx].id }) { idx ->
+                        val opt = sortedOptions[idx]
+                        val isChecked = sel.contains(opt.id)
+                        if (isBenefitList) {
+                            BenefitListItem(
+                                opt = opt as? MemberBenefit,
+                                isChecked = isChecked,
+                                single = single,
+                                onToggle = {
+                                    if (single) {
+                                        sel = setOf(opt.id)
+                                    } else if (isChecked) {
+                                        sel = sel - opt.id
+                                    } else {
+                                        sel = sel + opt.id
+                                    }
+                                    dirty = true
+                                },
+                                onExchange = {
+                                    scope.launch {
+                                        val msg = exchangeBenefit(activity, opt.name)
+                                        ToastUtil.show(activity, msg)
+                                    }
                                 }
-                                dirty = true
-                            },
-                            onExchange = {
-                                scope.launch {
-                                    val msg = exchangeBenefit(activity, opt.name)
-                                    ToastUtil.show(activity, msg)
-                                }
-                            }
-                        )
-                    } else {
-                        val optAvatar = (opt as? AlipayUser)?.avatar
-                        SxSelectableCard(
-                            title = opt.name,
-                            checked = isChecked,
-                            single = single,
-                            avatar = {
+                            )
+                        } else {
+                            val optAvatar = (opt as? AlipayUser)?.avatar
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 3.dp)
+                                    .background(
+                                        if (isChecked) MiuixTheme.colorScheme.primaryContainer else androidx.compose.ui.graphics.Color.Transparent,
+                                        RoundedCornerShape(12.dp)
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 if (!optAvatar.isNullOrBlank()) {
-                                    SxOptionAvatar(url = optAvatar)
+                                    MiuixAsyncAvatar(
+                                        url = optAvatar,
+                                        modifier = Modifier
+                                            .padding(end = 8.dp)
+                                            .size(40.dp),
+                                        cornerRadius = 12,
+                                        circle = true
+                                    )
                                 }
-                            },
-                            trailing = {
-                                if (withCount && isChecked) {
-                                    key(opt.id) {
-                                        SxCountStepper(
-                                            value = counts[opt.id] ?: 1,
-                                            onMinus = {
-                                                val next = (counts[opt.id] ?: 1) - 1
-                                                if (next >= 1) {
-                                                    counts = counts + (opt.id to next)
-                                                    dirty = true
-                                                }
-                                            },
-                                            onPlus = {
-                                                counts = counts + (opt.id to ((counts[opt.id] ?: 1) + 1))
-                                                dirty = true
-                                            }
-                                        )
-                                    }
-                                }
-                            },
-                            onClick = {
                                 if (single) {
-                                    sel = setOf(opt.id)
-                                } else if (isChecked) {
-                                    sel = sel - opt.id
+                                    RadioButtonPreference(
+                                        title = opt.name,
+                                        selected = isChecked,
+                                        modifier = Modifier.weight(1f),
+                                        titleColor = BasicComponentColors(
+                                            color = if (isChecked) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface,
+                                            disabledColor = MiuixTheme.colorScheme.disabledOnSurface
+                                        ),
+                                        radioButtonLocation = RadioButtonLocation.End,
+                                        onClick = {
+                                            sel = setOf(opt.id)
+                                            dirty = true
+                                        }
+                                    )
                                 } else {
-                                    sel = sel + opt.id
-                                    if (withCount && !counts.containsKey(opt.id)) {
-                                        counts = counts + (opt.id to (initialCounts[opt.id] ?: 1))
-                                    }
+                                    CheckboxPreference(
+                                        title = opt.name,
+                                        checked = isChecked,
+                                        modifier = Modifier.weight(1f),
+                                        titleColor = BasicComponentColors(
+                                            color = if (isChecked) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface,
+                                            disabledColor = MiuixTheme.colorScheme.disabledOnSurface
+                                        ),
+                                        checkboxLocation = CheckboxLocation.End,
+                                        onCheckedChange = { checked ->
+                                            if (checked) {
+                                                sel = sel + opt.id
+                                                if (!counts.containsKey(opt.id)) {
+                                                    counts = counts + (opt.id to (initialCounts[opt.id] ?: 1))
+                                                }
+                                            } else {
+                                                sel = sel - opt.id
+                                            }
+                                            dirty = true
+                                        }
+                                    )
                                 }
-                                dirty = true
                             }
-                        )
+                        }
+                        if (withCount && isChecked) {
+                            key(opt.id) {
+                                var sliderValue by remember(opt.id) { mutableFloatStateOf((counts[opt.id] ?: 1).toFloat()) }
+                                SliderPreference(
+                                    title = "数量",
+                                    value = sliderValue,
+                                    valueRange = run {
+                                        val f = liveField as? SelectAndCountModelField
+                                        (f?.valueRangeMin ?: 0f)..(f?.valueRangeMax ?: 100f)
+                                    },
+                                    valueText = sliderValue.roundToInt().toString(),
+                                    onValueChange = { sliderValue = it },
+                                    onValueChangeFinished = {
+                                        counts = counts + (opt.id to sliderValue.roundToInt())
+                                        dirty = true
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    if (sortedOptions.isNotEmpty()) {
+                        item {
+                            Spacer(Modifier.height(8.dp))
+                        }
                     }
                 }
             }
@@ -441,40 +582,37 @@ fun SelectionEditContent(
     }
 }
 
-/** 权益卡：图片 + 名称/价格 + 兑换按钮 + 勾选，选中态主色描边。 */
+/** 权益列表行：图片 + 名称/价格 + 勾选 + 兑换按钮 */
 @Composable
-private fun SxBenefitCard(
+private fun BenefitListItem(
     opt: MemberBenefit?,
     isChecked: Boolean,
     single: Boolean,
     onToggle: () -> Unit,
     onExchange: () -> Unit
 ) {
-    val shape = RoundedCornerShape(16.dp)
     Row(
-        Modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .then(
-                if (isChecked) {
-                    Modifier
-                        .neuRaised(shape, 3.dp)
-                        .border(1.dp, MiuixTheme.colorScheme.primary, shape)
-                } else {
-                    Modifier.neuRaised(shape, 3.dp)
-                }
-            )
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        SxOptionAvatar(url = opt?.pic, size = 52.dp)
+        // 图片
+        BenefitAsyncImage(
+            url = opt?.pic,
+            modifier = Modifier
+                .size(56.dp)
+                .background(MiuixTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(12.dp))
+        )
         Spacer(Modifier.width(12.dp))
+        // 名称 + 价格
         Column(Modifier.weight(1f)) {
             Text(
                 text = opt?.name ?: "",
                 fontSize = 15.sp,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                color = MiuixTheme.colorScheme.onBackground
+                color = MiuixTheme.colorScheme.onSurface
             )
             val point = opt?.point ?: ""
             val yuan = opt?.yuan ?: ""
@@ -494,18 +632,37 @@ private fun SxBenefitCard(
             }
         }
         Spacer(Modifier.width(8.dp))
+        // 兑换按钮
         TextButton(
             text = "兑换",
             onClick = onExchange
         )
         Spacer(Modifier.width(4.dp))
-        SxCheckMark(checked = isChecked, single = single)
+        // 勾选（保留批量勾选能力）：自绘勾选框
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .background(
+                    color = if (isChecked) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.surfaceContainerHighest,
+                    shape = RoundedCornerShape(6.dp)
+                )
+                .clickable { onToggle() },
+            contentAlignment = Alignment.Center
+        ) {
+            if (isChecked) {
+                Text(
+                    text = "✓",
+                    fontSize = 14.sp,
+                    color = MiuixTheme.colorScheme.onPrimary
+                )
+            }
+        }
     }
 }
 
-/** 轻量网络图片加载（OkHttp + Bitmap 缓存，避免新增依赖）。 */
+/** 轻量网络图片加载（OkHttp + Bitmap 缓存，避免新增依赖） */
 @Composable
-private fun SxOptionAvatar(url: String?, size: androidx.compose.ui.unit.Dp = 40.dp) {
+private fun BenefitAsyncImage(url: String?, modifier: Modifier = Modifier) {
     var bitmap by remember(url) { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(url) {
         if (url.isNullOrBlank()) {
@@ -537,17 +694,10 @@ private fun SxOptionAvatar(url: String?, size: androidx.compose.ui.unit.Dp = 40.
             bitmap = bitmap!!.asImageBitmap(),
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(size)
-                .clip(RoundedCornerShape(12.dp))
+            modifier = modifier
         )
     } else {
-        Box(
-            Modifier
-                .size(size)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MiuixTheme.colorScheme.surfaceContainerHighest)
-        )
+        Box(modifier)
     }
 }
 

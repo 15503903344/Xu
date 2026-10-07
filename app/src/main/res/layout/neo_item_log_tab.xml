@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 日志分类标签（选中态由 Kotlin 切换） -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginEnd="8dp"
+    android:paddingHorizontal="14dp"
+    android:paddingVertical="6dp"
+    android:textColor="@color/neo_text_hint"
+    android:textSize="13sp"
+    android:textStyle="bold" />

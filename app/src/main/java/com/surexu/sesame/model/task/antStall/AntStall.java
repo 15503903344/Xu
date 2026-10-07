@@ -52,7 +52,7 @@ public class AntStall extends ModelTask {
         // 添加首页
         taskTypeList.add("tianjiashouye");
         // 【木兰市集】逛精选好物
-        //        taskTypeList.add("ANTSTALL_XLIGHT_VARIABLE_AWARD");
+        taskTypeList.add("ANTSTALL_XLIGHT_VARIABLE_AWARD");
         // 去饿了么果园逛一逛
         taskTypeList.add("ANTSTALL_ELEME_VISIT");
         // 去点淘赚元宝提现
@@ -67,7 +67,7 @@ public class AntStall extends ModelTask {
     
     @Override
     public ModelGroup getGroup() {
-        return ModelGroup.FARM;
+        return ModelGroup.STALL;
     }
     
     private BooleanModelField AutoAntStallTaskList;

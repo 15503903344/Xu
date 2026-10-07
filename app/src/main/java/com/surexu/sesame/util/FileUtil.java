@@ -558,6 +558,10 @@ public class FileUtil {
     public static File getGoldenBeansTaskListMapFile() {
         return getFile(MAIN_DIRECTORY_FILE, "GoldenBeansTask.json");
     }
+
+    public static File getOrchardChouChouLeTaskListMapFile() {
+        return getFile(MAIN_DIRECTORY_FILE, "OrchardChouChouLeTask.json");
+    }
     
     /** 自动拉黑记录（含日期），用于"超期自动解禁重试" */
     public static File getAutoBlackListMapFile() {

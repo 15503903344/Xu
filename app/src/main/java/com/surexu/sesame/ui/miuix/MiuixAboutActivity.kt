@@ -32,6 +32,7 @@ import com.surexu.sesame.data.ViewAppInfo
 import com.surexu.sesame.util.ToastUtil
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /** 关于页：拟态图标 + 项目介绍 + 源码链接 + 开源许可。 */
@@ -128,11 +129,11 @@ fun AboutScreen(activity: MiuixAboutActivity) {
                     .neuRaised(RoundedCornerShape(24.dp), 5.dp)
                     .padding(vertical = 6.dp)
             ) {
-                SxSettingRow(
+                ArrowPreference(
                     title = "在 GitHub 查看源码",
                     onClick = { openWebUrl(activity, "https://github.com/yu1989324402/Xu") }
                 )
-                SxSettingRow(
+                ArrowPreference(
                     title = "下载最新版本",
                     onClick = { openWebUrl(activity, "https://github.com/yu1989324402/Xu/releases") }
                 )

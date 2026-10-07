@@ -187,14 +187,28 @@ public class NotificationUtil {
         }
     }
 
-    /** 通知栏标题固定为「Sure-Xu + 账号标识」，与 XRadiant 风格一致；uid 为空（UI 进程）时只显示模块名 */
+    /** 通知栏标题固定为「Sure-Xu + 账号标识 + 本轮能量」，与 XRadiant 风格一致；uid 为空（UI 进程）时只显示模块名 */
     private static String buildTitle() {
         try {
             String label = UserIdMap.getAccountLabel(UserIdMap.getCurrentUid());
-            return label == null ? "Sure-Xu" : "Sure-Xu " + label;
+            String base = label == null ? "Sure-Xu" : "Sure-Xu " + label;
+            return base + "｜本轮" + Statistics.getRoundCollected() + "g";
         } catch (Throwable t) {
             return "Sure-Xu";
         }
+    }
+
+    /**
+     * 新一轮开始：清零本轮收取能量。由 {@code ApplicationHook.startMainTask} 在起跳成功时调用。
+     */
+    public static void startRound() {
+        Statistics.resetRoundCollected();
+    }
+
+    /** 展开区里的完整能量行：本轮 / 本日收取能量。 */
+    private static String energyText() {
+        return "本轮收取能量 " + Statistics.getRoundCollected() + "g"
+                + "  本日收取能量 " + Statistics.getData(Statistics.TimeType.DAY, Statistics.DataType.COLLECTED) + "g";
     }
 
     private static void sendText() {

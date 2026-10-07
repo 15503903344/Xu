@@ -34,6 +34,53 @@
             </intent-filter>
         </activity>
 
+        <!-- 原创拟态新 UI 壳：与旧 miuix 界面并存，功能逐个对接中 -->
+        <activity
+            android:name=".ui.neo.NeoMainActivity"
+            android:exported="true"
+            android:resizeableActivity="true"
+            tools:targetApi="n" />
+
+        <activity
+            android:name=".ui.neo.NeoAIChatActivity"
+            android:exported="false"
+            android:resizeableActivity="true" />
+
+        <activity
+            android:name=".ui.neo.NeoGroupFieldsActivity"
+            android:exported="false"
+            android:resizeableActivity="true" />
+
+        <activity
+            android:name=".ui.neo.NeoAccountActivity"
+            android:exported="false"
+            android:resizeableActivity="true" />
+
+        <activity
+            android:name=".ui.neo.NeoAboutActivity"
+            android:exported="false"
+            android:resizeableActivity="true" />
+
+        <activity
+            android:name=".ui.neo.NeoSystemActivity"
+            android:exported="false"
+            android:resizeableActivity="true" />
+
+        <activity
+            android:name=".ui.neo.NeoServiceActivity"
+            android:exported="false"
+            android:resizeableActivity="true" />
+
+        <activity
+            android:name=".ui.neo.NeoFriendStatsActivity"
+            android:exported="false"
+            android:resizeableActivity="true" />
+
+        <activity
+            android:name=".ui.neo.NeoExtensionsActivity"
+            android:exported="false"
+            android:resizeableActivity="true" />
+
         <activity
             android:name=".ui.miuix.MiuixGroupFieldsActivity"
             android:exported="false"
@@ -70,7 +117,7 @@
             android:name=".ui.MainActivityAlias"
             android:enabled="true"
             android:exported="true"
-            android:targetActivity="com.surexu.sesame.ui.miuix.MiuixMainActivity">
+            android:targetActivity="com.surexu.sesame.ui.neo.NeoMainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

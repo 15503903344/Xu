@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ============ 原创拟态（Neo Neumorphism）色板 ============
+         与旧 miuix 纯白拟态区分：霜白基色 + 深雾蓝灰阴影 + 霓虹青主色。
+         层次完全由双向光照（左上高光 / 右下阴影）塑造。 -->
+
+    <!-- 基色 / 光照 -->
+    <color name="neo_base">#F6F9FE</color>
+    <color name="neo_card">#FDFEFF</color>
+    <color name="neo_highlight">#FFFFFF</color>
+
+    <!-- 阴影（冷雾蓝灰） -->
+    <color name="neo_shadow">#8398BD</color>
+    <color name="neo_shadow_deep">#6E84AC</color>
+
+    <!-- 凹陷面 -->
+    <color name="neo_pressed">#EEF3FB</color>
+    <color name="neo_pressed_edge">#D7E2F2</color>
+
+    <!-- 主色：霓虹青 -->
+    <color name="neo_primary">#00B3A4</color>
+    <color name="neo_primary_deep">#009688</color>
+    <color name="neo_primary_soft">#DFF7F4</color>
+
+    <!-- 辅色：电光紫 -->
+    <color name="neo_secondary">#7C6CFF</color>
+    <color name="neo_secondary_soft">#ECE9FF</color>
+
+    <!-- 强调：琥珀橙 -->
+    <color name="neo_accent">#FFB454</color>
+    <color name="neo_accent_soft">#FFF3E0</color>
+
+    <!-- 文字 -->
+    <color name="neo_text_primary">#12202E</color>
+    <color name="neo_text_secondary">#54657D</color>
+    <color name="neo_text_hint">#8CA0B8</color>
+    <color name="neo_on_primary">#FFFFFF</color>
+
+    <!-- 危险 -->
+    <color name="neo_error">#E5484D</color>
+</resources>

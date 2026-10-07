@@ -42,6 +42,20 @@ public class AntFarm extends ModelTask {
     private static final String FLAG_FAMILY_SHARE_FAIL_COUNT = "antFarm::familyShareToFriends::failCount";
     /** 家庭分享：当日最多尝试几次，超过后当天不再重试（避免每轮任务都重发邀请请求） */
     private static final int MAX_FAMILY_SHARE_ATTEMPT = 3;
+
+    /**
+     * S2 捐蛋「今日已尝试」标记：每天最多给 S2 发一次捐蛋请求。
+     * <p>有了它，响应没判定成功时不会在后续每轮运行里重发（那种情况由公益兜底）。
+     * <p>持久化 key，**不能改名**。
+     */
+    private static final String FLAG_COMPETITION_DONATE_TRIED = "antFarm::competitionDonateTried";
+
+    /**
+     * 公益捐蛋当日标记（沿用本地既有 key "farm::donation"）：与 S2 共用，
+     * 同一天只捐一次（谁先捐成都算数）。
+     */
+    private static final String FLAG_CHARITY_DONATION_DONE = "farm::donation";
+
     /** 小鸡所在空间标识：家庭空间。睡觉/起床靠它区分走家庭接口还是个人小屋接口 */
     private static final String SPACE_TYPE_CHICK_FAMILY = "ChickFamily";
 
@@ -127,6 +141,7 @@ public class AntFarm extends ModelTask {
     private BooleanModelField competitionDonate;               // 爱心鸡结号 | 自动捐蛋
     private BooleanModelField competitionStealRank;            // 爱心鸡结号 | 偷榜
     private IntegerModelField competitionStealMinutes;         // 爱心鸡结号 | 偷榜提前分钟数
+    private IntegerModelField competitionStealLimit;           // 爱心鸡结号 | 偷榜捐献上限
     private IntegerModelField competitionDonateAmount;         // 爱心鸡结号 | 自动捐蛋数量
     private BooleanModelField useBigEaterTool;
     @Getter
@@ -154,7 +169,7 @@ public class AntFarm extends ModelTask {
         modelFields.addField(recallAnimalType = new ChoiceModelField("recallAnimalType", "召回小鸡", RecallAnimalType.ALWAYS, RecallAnimalType.nickNames));
         modelFields.addField(feedAnimal = new BooleanModelField("feedAnimal", "投喂小鸡", false));
         modelFields.addField(feedFriendAnimal = new BooleanModelField("feedFriendAnimal", "帮喂小鸡 | 开启", true));
-        modelFields.addField(feedFriendAnimalList = new SelectAndCountModelField("feedFriendAnimalList", "帮喂小鸡 | " + "好友列表", new LinkedHashMap<>(), AlipayUser::getList, "请填写帮喂次数(每日)", 1, 100).setDependsOn("feedFriendAnimal"));
+        modelFields.addField(feedFriendAnimalList = new SelectAndCountModelField("feedFriendAnimalList", "帮喂小鸡 | " + "好友列表", new LinkedHashMap<>(), AlipayUser::getList, "请填写帮喂次数(每日)").setDependsOn("feedFriendAnimal"));
         modelFields.addField(hireAnimalType = new ChoiceModelField("hireAnimalType", "雇佣小鸡 | 动作", HireAnimalType.NONE, HireAnimalType.nickNames));
         modelFields.addField(hireAnimalList = new SelectModelField("hireAnimalList", "雇佣小鸡 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList).setDependsOn("hireAnimalType"));
         modelFields.addField(sendBackAnimalWay = new ChoiceModelField("sendBackAnimalWay", "遣返小鸡 | 方式", SendBackAnimalWay.NORMAL, SendBackAnimalWay.nickNames));
@@ -177,6 +192,7 @@ public class AntFarm extends ModelTask {
         modelFields.addField(competitionDonateAmount = new IntegerModelField("competitionDonateAmount", "爱心鸡结号 | 自动捐蛋数量", 5, 0, 1000).setDependsOn("competitionDonate"));
         modelFields.addField(competitionStealRank = new BooleanModelField("competitionStealRank", "爱心鸡结号 | 偷榜", false).setDependsOn("competition"));
         modelFields.addField(competitionStealMinutes = new IntegerModelField("competitionStealMinutes", "爱心鸡结号 | 偷榜提前分钟数", 30, 0, 240).setDependsOn("competitionStealRank"));
+        modelFields.addField(competitionStealLimit = new IntegerModelField("competitionStealLimit", "爱心鸡结号 | 偷榜捐献上限(0不限)", 0, 0, 1000).setDependsOn("competitionStealRank"));
         modelFields.addField(family = new BooleanModelField("family", "亲密家庭 | 开启", false));
         modelFields.addField(familyOptions = new SelectModelField("familyOptions", "亲密家庭 | 选项", new LinkedHashSet<>(), CustomOption::getAntFarmFamilyOptions).setDependsOn("family"));
         modelFields.addField(notInviteList = new SelectModelField("notInviteList", "亲密家庭 | 不邀请列表", new LinkedHashSet<>(), AlipayUser::getList).setDependsOn("family"));
@@ -189,8 +205,7 @@ public class AntFarm extends ModelTask {
         modelFields.addField(farmGameTime = new ListModelField.ListJoinCommaToStringModelField("farmGameTime", "小鸡乐园 " + "| 游戏时间(范围)", farmGameTimeList).setDependsOn("recordFarmGame"));
         modelFields.addField(drawGameCenterAward = new BooleanModelField("drawGameCenterAward", "小鸡乐园 | 游戏宝箱", false));
         modelFields.addField(gameCenterBuyMallItem = new BooleanModelField("gameCenterBuyMallItem", "小鸡乐园 | 乐园集市", false));
-        modelFields.addField(gameCenterBuyMallItemList = // 兑奖次数下限设为 1：勾选即至少兑奖 1 次，避免默认 0 导致勾选不生效
-                new SelectAndCountModelField("gameCenterBuyMallItemList", "小鸡乐园 | 兑奖", new LinkedHashMap<>(), GameCenterMallItem::getList, "请填写兑奖次数(每日)", 1, 100).setDependsOn("gameCenterBuyMallItem"));
+        modelFields.addField(gameCenterBuyMallItemList = new SelectAndCountModelField("gameCenterBuyMallItemList", "小鸡乐园 | 兑奖", new LinkedHashMap<>(), GameCenterMallItem::getList, "请填写兑奖次数(每日)").setDependsOn("gameCenterBuyMallItem"));
         modelFields.addField(kitchen = new BooleanModelField("kitchen", "小鸡厨房", false));
         modelFields.addField(chickenDiary = new BooleanModelField("chickenDiary", "小鸡日记", false));
         modelFields.addField(harvestProduce = new BooleanModelField("harvestProduce", "收取爱心鸡蛋", false));
@@ -198,7 +213,7 @@ public class AntFarm extends ModelTask {
         //modelFields.addField(getFeedType = new ChoiceModelField("getFeedType", "一起拿饲料 | 动作", GetFeedType.NONE, GetFeedType.nickNames));
         //modelFields.addField(getFeedList = new SelectModelField("getFeedList", "一起拿饲料 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
         modelFields.addField(acceptGift = new BooleanModelField("acceptGift", "收麦子", false));
-        modelFields.addField(visitFriendList = new SelectAndCountModelField("visitFriendList", "送麦子 | 好友列表", new LinkedHashMap<>(), AlipayUser::getList, "请填写赠送次数(每日)", 1, 100));
+        modelFields.addField(visitFriendList = new SelectAndCountModelField("visitFriendList", "送麦子 | 好友列表", new LinkedHashMap<>(), AlipayUser::getList, "请填写赠送次数(每日)"));
         return modelFields;
     }
 
@@ -1145,12 +1160,15 @@ public class AntFarm extends ModelTask {
             if (!inRound) {
                 Log.record("爱心鸡结号❤️当前不在活动轮次内(周一00:00-周日20:00)，跳过捐蛋/偷榜");
             } else {
-                // 自动捐蛋（每轮一次，定向捐到 S2 项目）
+                // 自动捐蛋（每天一次，S2 优先：同一天公益已捐过 / 已尝试过则不再发请求）
                 if (competitionDonate.getValue()) {
                     String roundId = jo.optString("rankRoundId");
-                    if (!roundId.isEmpty() && !Status.isCompetitionDonated(roundId)) {
-                        donateToCompetition(competitionDonateAmount.getValue());
-                        Status.markCompetitionDonated(roundId);
+                    if (!roundId.isEmpty() && !Status.isCompetitionDonated(roundId)
+                            && !Status.hasFlagToday(FLAG_CHARITY_DONATION_DONE)
+                            && !Status.hasFlagToday(FLAG_COMPETITION_DONATE_TRIED)) {
+                        if (donateToCompetition(competitionDonateAmount.getValue())) {
+                            Status.markCompetitionDonated(roundId);
+                        }
                     }
                 }
                 // 偷榜定时任务（周日20:00前 N 分钟执行一次）
@@ -1272,17 +1290,31 @@ public class AntFarm extends ModelTask {
     }
 
     /**
-     * 自动捐蛋到 S2 项目（爱心鸡结号）。从入口信息取 projectId（抓包中为2609）定向捐赠。
+     * 优先给 S2 定向捐蛋（每天一次，数量取「爱心鸡结号 | 自动捐蛋数量」）。
+     * <p>返回「今天的捐蛋是否已完成」：捐成功返回 true；「自动捐蛋」没开 / 没蛋 / 取不到项目 /
+     * 请求失败一律返回 false，由调用方回退公益捐蛋（S2 捐不了不能让这一天一次都捐不出）。
+     * <p>两道防重：
+     * <ul>
+     *   <li>① 发请求前落「今日已尝试」标记 {@link #FLAG_COMPETITION_DONATE_TRIED}：
+     *       S2 每天最多发一次请求，响应判定不成也不会每轮重发；</li>
+     *   <li>② 响应没判定成功时回读项目累计捐赠数（{@code userProjectDonationNum}），
+     *       涨了就认定其实捐上了，不再回退公益（避免"实际已捐 + 公益再捐一次"）。</li>
+     * </ul>
      */
-    private void donateToCompetition(int amount) {
+    private boolean donateToCompetition(int amount) {
         try {
             if (amount <= 0) {
-                return;
+                return false;
             }
             int have = (int) harvestBenevolenceScore;
             if (have <= 0) {
-                Log.record("爱心鸡结号❤️当前无蛋可捐");
-                return;
+                Log.record("爱心鸡结号❤️当前无蛋可捐，回退公益捐蛋");
+                return false;
+            }
+            if (Status.hasFlagToday(FLAG_COMPETITION_DONATE_TRIED)) {
+                // ① 今天已经给 S2 发过请求（真捐上了会命中轮次标记，这里只兜"发起过但没判定成功"）
+                Log.record("爱心鸡结号❤️今日已尝试过 S2 捐蛋，回退公益捐蛋");
+                return false;
             }
             JSONObject info = new JSONObject(AntFarmRpcCall.queryCompetitionEntranceInfo());
             String projectId = null, projectName = null;
@@ -1296,14 +1328,27 @@ public class AntFarm extends ModelTask {
             }
             if (projectId == null || projectId.isEmpty()) {
                 Log.record("爱心鸡结号❤️未获取到捐蛋项目，跳过自动捐蛋");
-                return;
+                return false;
             }
             int n = Math.min(amount, have);
+            int beforeNum = getProjectDonationNum(projectId);   // ② 捐前基准
             Log.farm("爱心鸡结号❤️自动捐蛋" + n + "枚到项目[" + projectName + "]");
-            donationCompetition(projectId, projectName, n);
+            Status.flagToday(FLAG_COMPETITION_DONATE_TRIED);
+            if (Boolean.TRUE.equals(donationCompetition(projectId, projectName, n))) {
+                return true;
+            }
+            // ② 响应没判定成功：回读累计捐赠数，涨了说明其实捐上了
+            int afterNum = getProjectDonationNum(projectId);
+            if (afterNum > beforeNum) {
+                Log.record("爱心鸡结号❤️响应未判定成功，但项目累计捐赠" + beforeNum + "→" + afterNum + "，按已捐处理");
+                return true;
+            }
+            Log.record("爱心鸡结号❤️本轮 S2 捐蛋未成功(累计" + beforeNum + "→" + afterNum + ")，回退公益捐蛋");
+            return false;
         } catch (Throwable t) {
             Log.err(TAG, "donateToCompetition err:", t);
         }
+        return false;
     }
 
     /**
@@ -1380,7 +1425,20 @@ public class AntFarm extends ModelTask {
                 Log.record("爱心鸡结号❤️偷榜：当前无蛋可捐");
                 return;
             }
-            int n = Math.min(need, have);
+            // 蛋不够就不捐：捐了也超不过第1名
+            if (have < need) {
+                Log.record("爱心鸡结号❤️偷榜⏭️跳过：手上的蛋不够超过第1名(有" + have + "需" + need
+                        + "，当前第" + myRank + "名捐" + myDonation + "，第1名捐" + rank1Donation + ")");
+                return;
+            }
+            int n = need;
+            // 上限按最终捐献量判定
+            int stealLimit = competitionStealLimit.getValue();
+            if (stealLimit > 0 && n > stealLimit) {
+                Log.record("爱心鸡结号❤️偷榜⏭️跳过：需捐" + n + "超过上限" + stealLimit
+                        + "(当前第" + myRank + "名捐" + myDonation + "，第1名捐" + rank1Donation + ")");
+                return;
+            }
             // 定向捐到 S2 项目
             JSONObject info = new JSONObject(AntFarmRpcCall.queryCompetitionEntranceInfo());
             String projectId = null, projectName = null;

@@ -34,6 +34,18 @@ public class FriendWatch extends IdAndName {
         this.name = name;
     }
 
+    public String getStartTime() {
+        return startTime;
+    }
+
+    public int getAllGet() {
+        return allGet;
+    }
+
+    public int getWeekGet() {
+        return weekGet;
+    }
+
     public String getAvatar() {
         return avatar;
     }

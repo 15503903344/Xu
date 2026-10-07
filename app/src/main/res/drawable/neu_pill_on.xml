@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 拟态状态胶囊：开（主色软底） -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/neo_primary_soft" />
+    <corners android:radius="100dp" />
+</shape>

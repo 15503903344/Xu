@@ -70,8 +70,10 @@ import androidx.compose.ui.unit.sp
 import com.surexu.sesame.util.FileUtil
 import com.surexu.sesame.util.ToastUtil
 import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.io.File
 
@@ -258,10 +260,29 @@ fun LogScreen(activity: MiuixLogViewerActivity, logType: LogType) {
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                SxSearchBar(
-                    query = searchQuery,
-                    onQueryChange = { searchQuery = it },
-                    placeholder = "搜索日志"
+                TextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    label = "",
+                    modifier = Modifier.weight(1f),
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.Search,
+                            contentDescription = "搜索",
+                            tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            modifier = Modifier.padding(start = 12.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            Text(
+                                "×",
+                                fontSize = 16.sp,
+                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                modifier = Modifier.padding(end = 12.dp).clickable { searchQuery = "" }
+                            )
+                        }
+                    }
                 )
             }
             // ── Runtime tag 过滤条 ──────────────────────────────────────
@@ -354,16 +375,18 @@ fun LogScreen(activity: MiuixLogViewerActivity, logType: LogType) {
     }
 }
 
-/** Tag 过滤 Chip:拟态小药片,未选中凸起、选中凹陷高亮 */
+/** Tag 过滤 Chip:圆角小药片,选中时高亮 */
 @Composable
 private fun TagChip(label: String, count: Int, selected: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(15.dp)
-    val fg = if (selected) MiuixTheme.colorScheme.primary
+    val bg = if (selected) MiuixTheme.colorScheme.primaryContainer
+        else MiuixTheme.colorScheme.surfaceContainer
+    val fg = if (selected) MiuixTheme.colorScheme.onPrimaryContainer
         else MiuixTheme.colorScheme.onSurfaceVariantSummary
     Row(
         Modifier
             .height(30.dp)
-            .then(if (selected) Modifier.neuPressed(shape) else Modifier.neuRaised(shape, 3.dp))
+            .clip(RoundedCornerShape(15.dp))
+            .background(bg)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onClick() }
             .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -466,6 +489,7 @@ fun LogTopBar(
     onClear: (() -> Unit)? = null,
     onShare: (() -> Unit)? = null,
     onExecute: (() -> Unit)? = null,
+    actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {},
 ) {
     Column(
         Modifier
@@ -480,11 +504,13 @@ fun LogTopBar(
                 .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            SxIconButton(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "返回",
-                onClick = onBack,
-            )
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "返回",
+                    tint = MiuixTheme.colorScheme.onBackground
+                )
+            }
             Text(
                 text = title,
                 modifier = Modifier
@@ -495,48 +521,62 @@ fun LogTopBar(
                 color = MiuixTheme.colorScheme.onBackground,
                 maxLines = 1
             )
+            actions()
             if (onImport != null) {
-                SxIconButton(
-                    imageVector = Icons.Filled.Upload,
-                    contentDescription = "导入",
-                    onClick = onImport,
-                    modifier = Modifier.rotate(180f),
-                )
+                IconButton(onClick = onImport) {
+                    // 导入图标:把 Upload 旋转 180°(朝下)与导出(朝上)区分
+                    Icon(
+                        imageVector = Icons.Filled.Upload,
+                        contentDescription = "导入",
+                        tint = MiuixTheme.colorScheme.onBackground,
+                        modifier = Modifier.rotate(180f)
+                    )
+                }
             }
             if (onCopy != null) {
-                SxIconButton(
-                    imageVector = Icons.Filled.ContentCopy,
-                    contentDescription = "复制全部",
-                    onClick = onCopy,
-                )
+                IconButton(onClick = onCopy) {
+                    Icon(
+                        imageVector = Icons.Filled.ContentCopy,
+                        contentDescription = "复制全部",
+                        tint = MiuixTheme.colorScheme.onBackground
+                    )
+                }
             }
             if (onExport != null) {
-                SxIconButton(
-                    imageVector = Icons.Filled.Upload,
-                    contentDescription = "导出",
-                    onClick = onExport,
-                )
+                IconButton(onClick = onExport) {
+                    Icon(
+                        imageVector = Icons.Filled.Upload,
+                        contentDescription = "导出",
+                        tint = MiuixTheme.colorScheme.onBackground
+                    )
+                }
             }
             if (onClear != null) {
-                SxIconButton(
-                    imageVector = Icons.Filled.Delete,
-                    contentDescription = "删除",
-                    onClick = onClear,
-                )
+                IconButton(onClick = onClear) {
+                    Icon(
+                        imageVector = Icons.Filled.Delete,
+                        contentDescription = "删除",
+                        tint = MiuixTheme.colorScheme.onBackground
+                    )
+                }
             }
             if (onShare != null) {
-                SxIconButton(
-                    imageVector = Icons.Filled.Share,
-                    contentDescription = "分享",
-                    onClick = onShare,
-                )
+                IconButton(onClick = onShare) {
+                    Icon(
+                        imageVector = Icons.Filled.Share,
+                        contentDescription = "分享",
+                        tint = MiuixTheme.colorScheme.onBackground
+                    )
+                }
             }
             if (onExecute != null) {
-                SxIconButton(
-                    imageVector = Icons.Filled.PlayArrow,
-                    contentDescription = "执行",
-                    onClick = onExecute,
-                )
+                IconButton(onClick = onExecute) {
+                    Icon(
+                        imageVector = Icons.Filled.PlayArrow,
+                        contentDescription = "执行",
+                        tint = MiuixTheme.colorScheme.onBackground
+                    )
+                }
             }
         }
     }

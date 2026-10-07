@@ -1,14 +1,18 @@
 package com.surexu.sesame.model.normal.answerAI;
 
 import android.content.Context;
+import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.surexu.sesame.data.ConfigV2;
 import com.surexu.sesame.data.Model;
+import com.surexu.sesame.data.ModelField;
 import com.surexu.sesame.data.ModelFields;
 import com.surexu.sesame.data.ModelGroup;
 import com.surexu.sesame.data.TokenConfig;
 import com.surexu.sesame.data.ViewAppInfo;
+import com.surexu.sesame.data.modelFieldExt.BooleanModelField;
 import com.surexu.sesame.data.modelFieldExt.EmptyModelField;
 import com.surexu.sesame.data.modelFieldExt.IntegerModelField;
 import com.surexu.sesame.data.modelFieldExt.StringModelField;
@@ -16,7 +20,10 @@ import com.surexu.sesame.util.Log;
 import com.surexu.sesame.util.StringUtil;
 import com.surexu.sesame.util.ToastUtil;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 public class AnswerAI extends Model {
@@ -121,6 +128,162 @@ public class AnswerAI extends Model {
             return "";
         }
         return StringUtil.truncate(text.replaceAll("\\s+", " ").trim(), maxLength);
+    }
+
+    /** 按当前配置构造 AI 客户端；未填齐配置时返回 null */
+    public static CustomAI buildCustomAI() {
+        AnswerAI model = Model.getModel(AnswerAI.class);
+        if (model == null) {
+            Model.initAllModel();
+            model = Model.getModel(AnswerAI.class);
+        }
+        if (model == null) {
+            return null;
+        }
+        CustomAI ai = new CustomAI(model.customAIUrl.getValue(), model.customAIModel.getValue(), model.customAIKey.getValue(), model.customAIMaxTokens.getValue());
+        return ai.isConfigured() ? ai : null;
+    }
+
+    /**
+     * 聊天页等 UI 复用入口：用当前配置发一次对话请求。
+     *
+     * @return 模型回答文本；未配置或请求失败返回空串
+     */
+    public static String ask(String question) {
+        try {
+            CustomAI ai = buildCustomAI();
+            if (ai == null) {
+                Log.record("AI🧠聊天未调用：接口地址/模型名/令牌未填齐");
+                return "";
+            }
+            return ai.getAnswerStr(question);
+        } catch (Throwable t) {
+            Log.printStackTrace(TAG, t);
+            return "";
+        }
+    }
+
+    /**
+     * 聊天页控制类指令入口：把自然语言（如"开启森林收能量"）映射为功能开关并落盘生效。
+     *
+     * @return 已执行的操作描述；未识别为控制指令返回 null（调用方应转走 AI 对话）
+     */
+    public static String executeCommand(String question) {
+        try {
+            if (question == null) {
+                return null;
+            }
+            question = question.trim();
+            if (question.isEmpty()) {
+                return null;
+            }
+            String q = question.replaceAll("[\\s，。,.！!？?、；;：:\"'']", "").toLowerCase(Locale.ROOT);
+            boolean enable;
+            if (containsAny(q, "开启", "打开", "启用", "开一下", "帮我开")) {
+                enable = true;
+            } else if (containsAny(q, "关闭", "停用", "禁用", "关一下", "帮我关")) {
+                enable = false;
+            } else {
+                return null;
+            }
+            List<String> changedItems = new ArrayList<>();
+            boolean changed = false;
+            // 高频子功能同义词：统一替换成字段标准名，口语说法也能命中
+            q = q.replace("收取能量", "收集能量").replace("偷能量", "收集能量").replace("收能量", "收集能量")
+                    .replace("收金球", "收取金球").replace("收球", "收取金球");
+            for (Model model : Model.getModelList()) {
+                if (model == null || model instanceof AnswerAI || StringUtil.isEmpty(model.getName())) {
+                    continue;
+                }
+                String modelName = model.getName();
+                // 模型匹配：全名连续出现优先，否则用最长连续前缀兜底（"开启健康岛"命中"健康岛红包碎片兑换"）
+                boolean modelHit = q.contains(modelName);
+                if (!modelHit) {
+                    for (int len = Math.min(3, modelName.length()); len >= 2; len--) {
+                        if (q.contains(modelName.substring(0, len))) {
+                            modelHit = true;
+                            break;
+                        }
+                    }
+                }
+                if (!modelHit) {
+                    continue;
+                }
+                // 子功能匹配：先移除模型名并剔除动作词，剩余文本描述具体功能
+                String rest = q.contains(modelName) ? q.replace(modelName, "") : q;
+                rest = rest.replace("开启", "").replace("打开", "").replace("启用", "")
+                        .replace("开一下", "").replace("帮我开", "")
+                        .replace("关闭", "").replace("停用", "").replace("禁用", "")
+                        .replace("关一下", "").replace("帮我关", "");
+                List<String> fieldHits = new ArrayList<>();
+                if (rest.length() >= 2) {
+                    ModelFields fields = model.getFields();
+                    if (fields != null) {
+                        for (Map.Entry<String, ModelField<?>> entry : fields.entrySet()) {
+                            ModelField<?> field = entry.getValue();
+                            if (!(field instanceof BooleanModelField) || StringUtil.isEmpty(field.getName())) {
+                                continue;
+                            }
+                            // 字段名可能含" | "分隔（分组 | 功能），任一部分与剩余文本互为连续子串即命中
+                            boolean fieldHit = false;
+                            for (String part : field.getName().split("\\|")) {
+                                String p = part.replaceAll("[\\s（）()]", "");
+                                if (p.length() >= 2 && (p.contains(rest) || rest.contains(p))) {
+                                    fieldHit = true;
+                                    break;
+                                }
+                            }
+                            if (fieldHit) {
+                                fieldHits.add(field.getName());
+                            }
+                        }
+                    }
+                }
+                // 顺带命中模型（rest 非空且无任何子功能命中）视为误匹配，跳过不开
+                if (rest.isEmpty() || !fieldHits.isEmpty()) {
+                    BooleanModelField enableField = model.getEnableField();
+                    if (enableField != null && Boolean.TRUE.equals(enableField.getValue()) != enable) {
+                        enableField.setObjectValue(enable);
+                        changed = true;
+                    }
+                    changedItems.add(modelName);
+                    for (String fieldName : fieldHits) {
+                        BooleanModelField boolField = (BooleanModelField) model.getFields().get(fieldName);
+                        if (Boolean.TRUE.equals(boolField.getValue()) != enable) {
+                            boolField.setObjectValue(enable);
+                            changed = true;
+                        }
+                        changedItems.add(modelName + "·" + fieldName);
+                    }
+                }
+            }
+            if (changedItems.isEmpty()) {
+                return null;
+            }
+            if (changed) {
+                ConfigV2.save(null, false);
+                try {
+                    Context context = ViewAppInfo.getContext();
+                    if (context != null) {
+                        context.sendBroadcast(new Intent("com.eg.android.AlipayGphone.sesame.restart"));
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+            return (enable ? "已开启：" : "已关闭：") + String.join("、", changedItems);
+        } catch (Throwable t) {
+            Log.printStackTrace(TAG, t);
+            return null;
+        }
+    }
+
+    private static boolean containsAny(String q, String... keys) {
+        for (String key : keys) {
+            if (q.contains(key)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

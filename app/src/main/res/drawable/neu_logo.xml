@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 原创拟态·凸起圆（Logo 底座） -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:left="0dp"
+        android:top="0dp"
+        android:right="4dp"
+        android:bottom="5dp">
+        <shape android:shape="oval">
+            <solid android:color="@color/neo_shadow" />
+        </shape>
+    </item>
+    <item
+        android:left="1dp"
+        android:top="1dp"
+        android:right="1dp"
+        android:bottom="1dp">
+        <shape android:shape="oval">
+            <solid android:color="@color/neo_card" />
+            <stroke
+                android:width="1dp"
+                android:color="@color/neo_highlight" />
+        </shape>
+    </item>
+</layer-list>

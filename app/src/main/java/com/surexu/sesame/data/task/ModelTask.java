@@ -237,6 +237,8 @@ public abstract class ModelTask extends Model {
     }
 
     public static void startAllTask(Boolean force) {
+        // 整轮开始：清零本轮收取能量。单分组执行（startGroupTask）不算整轮，故不在此清零
+        NotificationUtil.startRound();
         //自动触发备份配置文件
         if (!Status.hasFlagToday("Config::backup")) {
             FileUtil.backupConfigV2WithRolling(UserIdMap.getCurrentUid());
@@ -286,6 +288,10 @@ public abstract class ModelTask extends Model {
             if (((ModelTask) model).startTask(false)) {
                 count++;
             }
+        }
+        if (count > 0) {
+            // 手动执行分组也算新一轮：先清零本轮收取能量，再起跑
+            NotificationUtil.startRound();
         }
         return count;
     }

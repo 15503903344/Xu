@@ -18,9 +18,20 @@ import com.surexu.sesame.model.task.antOrchard.AntOrchard;
 import com.surexu.sesame.model.task.consumeGold.ConsumeGold;
 import com.surexu.sesame.model.task.antSports.AntSports;
 import com.surexu.sesame.model.task.antStall.AntStall;
+import com.surexu.sesame.model.task.dailyCash.DailyCash;
+import com.surexu.sesame.model.task.dayDaySave.DayDaySave;
 import com.surexu.sesame.model.task.greenFinance.GreenFinance;
 import com.surexu.sesame.model.task.goldenbeans.goldenbeans;
+import com.surexu.sesame.model.task.healthIslandRewards.HealthIslandRewards;
+import com.surexu.sesame.model.task.localTheme.LocalTheme;
+import com.surexu.sesame.model.task.luckCard.LuckCardStatus;
+import com.surexu.sesame.model.task.myBankWelfare.MyBankWelfare;
+import com.surexu.sesame.model.task.other.OtherTask;
+import com.surexu.sesame.model.task.promoprodRewards.PromoprodRewards;
 import com.surexu.sesame.model.task.protectEcology.ProtectEcology;
+import com.surexu.sesame.model.task.videoRewards.VideoRewards;
+import com.surexu.sesame.model.task.weeklyWelfare.WeeklyWelfare;
+import com.surexu.sesame.model.task.youthPrivilege.YouthPrivilege;
 import lombok.Getter;
 
 public class ModelOrder {
@@ -44,6 +55,17 @@ public class ModelOrder {
         clazzList.add(GreenFinance.class);
         clazzList.add(ConsumeGold.class);
         clazzList.add(goldenbeans.class);
+        clazzList.add(OtherTask.class);
+        clazzList.add(VideoRewards.class);
+        clazzList.add(YouthPrivilege.class);
+        clazzList.add(DayDaySave.class);
+        clazzList.add(DailyCash.class);
+        clazzList.add(WeeklyWelfare.class);
+        clazzList.add(MyBankWelfare.class);
+        clazzList.add(LocalTheme.class);
+        clazzList.add(LuckCardStatus.class);
+        clazzList.add(PromoprodRewards.class);
+        clazzList.add(HealthIslandRewards.class);
         clazzList.add(AnswerAI.class);
 
         ExtensionsHandle.handleAlphaRequest("ModelOrder", "addExtensionsClass", clazzList);

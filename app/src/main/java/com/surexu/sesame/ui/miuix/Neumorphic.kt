@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference
 
 /**
  * Sure-Xu 拟态（Neumorphism / Soft UI）设计系统 —— 未来拟态纯白版。
@@ -103,8 +105,8 @@ fun Modifier.neuPressed(
  * 「每个功能一张卡片」的标准写法：
  * ```
  * CardList {
- *     ItemCard { SxSettingRow(title = "功能 A", onClick = { ... }) }
- *     ItemCard { SxSettingRow(title = "功能 B", onClick = { ... }) }
+ *     ItemCard { ArrowPreference(title = "功能 A", onClick = { ... }) }
+ *     ItemCard { ArrowPreference(title = "功能 B", onClick = { ... }) }
  * }
  * ```
  */
@@ -146,7 +148,10 @@ fun ItemCard(
 }
 
 /**
- * 单卡片箭头偏好项：基于自研 [SxSettingRow]，独立一张卡片，一个功能一张卡片。
+ * 单卡片箭头偏好项：把 miuix 的 [ArrowPreference] 单独包进一张 [ItemCard]，
+ * 用于「一个功能一张卡片」的列表（配合 [CardList] 使用）。
+ *
+ * 参数与 [ArrowPreference] 对齐，调用方写法基本不变。
  */
 @Composable
 fun CardArrowPreference(
@@ -155,7 +160,7 @@ fun CardArrowPreference(
     onClick: () -> Unit = {},
 ) {
     ItemCard {
-        SxSettingRow(
+        ArrowPreference(
             title = title,
             summary = summary,
             onClick = onClick,
@@ -164,7 +169,7 @@ fun CardArrowPreference(
 }
 
 /**
- * 单卡片开关偏好项：基于自研 [SxSwitch]，独立一张卡片。
+ * 单卡片开关偏好项：与 [CardArrowPreference] 同理，把开关包进独立卡片。
  */
 @Composable
 fun CardSwitchPreference(
@@ -174,15 +179,11 @@ fun CardSwitchPreference(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     ItemCard {
-        SxSettingRow(
+        SwitchPreference(
             title = title,
             summary = summary,
-            trailing = {
-                SxSwitch(
-                    checked = checked,
-                    onCheckedChange = onCheckedChange,
-                )
-            },
+            checked = checked,
+            onCheckedChange = onCheckedChange,
         )
     }
 }
