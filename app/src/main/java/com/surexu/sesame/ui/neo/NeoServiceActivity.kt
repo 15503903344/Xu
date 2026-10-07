@@ -15,7 +15,6 @@ import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import com.surexu.sesame.R
 import com.surexu.sesame.data.AppConfig
@@ -57,6 +56,11 @@ class NeoServiceActivity : AppCompatActivity() {
         val container = findViewById<LinearLayout>(R.id.neo_service_list)
         container.removeAllViews()
         val marginPx = dp(12)
+
+        // 模拟请求：独立页输入 mtop 接口方法/数据，发送真实请求并展示结果
+        addRow(container, marginPx, "模拟请求", "向支付宝 mtop 接口发送一次真实请求", withSwitch = false) {
+            startActivity(Intent(this, NeoMockRequestActivity::class.java))
+        }
 
         // 好友统计：展示单向好友列表
         addRow(container, marginPx, "好友统计", "查看单向好友与能量统计", withSwitch = false) {

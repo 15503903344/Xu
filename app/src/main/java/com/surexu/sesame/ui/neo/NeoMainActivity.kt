@@ -447,7 +447,6 @@ class NeoMainActivity : AppCompatActivity() {
             tabBar.visibility = View.GONE
             findViewById<View>(R.id.neo_logs_list).visibility = View.GONE
             findViewById<View>(R.id.neo_logs_empty).visibility = View.VISIBLE
-            findViewById<View>(R.id.neo_logs_scroll_buttons).visibility = View.GONE
             return
         }
         if (currentLogTag !in visibleTabs) {
@@ -506,20 +505,10 @@ class NeoMainActivity : AppCompatActivity() {
             Toast.makeText(this, "已刷新", Toast.LENGTH_SHORT).show()
         }
 
-        // 更多：复制全部 / 导出 / 清空
+        // 更多：复制全部 / 导出 / 清空 / 滚动到底 / 滚动顶部
         findViewById<View>(R.id.neo_logs_more_btn).setOnClickListener {
             haptic(it)
             showLogMoreDialog()
-        }
-
-        // 浮动滚动按钮：滚到顶部 / 滚到底部（日志列表较长时一键定位）
-        findViewById<View>(R.id.neo_logs_scroll_top_btn).setOnClickListener {
-            haptic(it)
-            findViewById<ScrollView>(R.id.neo_logs_scroll).fullScroll(ScrollView.FOCUS_UP)
-        }
-        findViewById<View>(R.id.neo_logs_scroll_bottom_btn).setOnClickListener {
-            haptic(it)
-            findViewById<ScrollView>(R.id.neo_logs_scroll).fullScroll(ScrollView.FOCUS_DOWN)
         }
     }
 
@@ -657,7 +646,6 @@ class NeoMainActivity : AppCompatActivity() {
     private fun renderLogEntries() {
         val list = findViewById<LinearLayout>(R.id.neo_logs_list)
         val empty = findViewById<View>(R.id.neo_logs_empty)
-        val scrollButtons = findViewById<View>(R.id.neo_logs_scroll_buttons)
         val query = findViewById<EditText>(R.id.neo_logs_search_input).text.toString().trim()
         val filtered = logEntries.filter { e ->
             query.isEmpty() ||
@@ -668,12 +656,10 @@ class NeoMainActivity : AppCompatActivity() {
         if (filtered.isEmpty()) {
             empty.visibility = View.VISIBLE
             list.visibility = View.GONE
-            scrollButtons.visibility = View.GONE
             return
         }
         empty.visibility = View.GONE
         list.visibility = View.VISIBLE
-        scrollButtons.visibility = View.VISIBLE
         filtered.forEach { entry ->
             val card = layoutInflater.inflate(R.layout.neo_item_log_entry, list, false)
             card.findViewById<TextView>(R.id.entry_tag).text = entry.tag ?: "日志"
@@ -745,12 +731,12 @@ class NeoMainActivity : AppCompatActivity() {
         imm?.hideSoftInputFromWindow(input.windowToken, 0)
     }
 
-    /** 更多菜单：复制全部（当前筛选结果） / 导出日志 / 清空日志。 */
+    /** 更多菜单：复制全部（当前筛选结果） / 导出日志 / 清空日志 / 滚动到底 / 滚动顶部。 */
     private fun showLogMoreDialog() {
         val file = logFileFor(currentLogTag)
         showOptionDialog(
             "日志操作",
-            listOf("复制全部", "导出日志", "清空日志")
+            listOf("复制全部", "导出日志", "清空日志", "滚动到底", "滚动顶部")
         ) { which ->
             when (which) {
                 0 -> {
@@ -796,6 +782,12 @@ class NeoMainActivity : AppCompatActivity() {
                     } else {
                         Toast.makeText(this, "清空失败", Toast.LENGTH_SHORT).show()
                     }
+                }
+                3 -> {
+                    findViewById<ScrollView>(R.id.neo_logs_scroll).fullScroll(ScrollView.FOCUS_DOWN)
+                }
+                4 -> {
+                    findViewById<ScrollView>(R.id.neo_logs_scroll).fullScroll(ScrollView.FOCUS_UP)
                 }
             }
         }

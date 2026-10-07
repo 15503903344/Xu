@@ -82,6 +82,11 @@
             android:resizeableActivity="true" />
 
         <activity
+            android:name=".ui.neo.NeoMockRequestActivity"
+            android:exported="false"
+            android:resizeableActivity="true" />
+
+        <activity
             android:name=".ui.miuix.MiuixGroupFieldsActivity"
             android:exported="false"
             android:resizeableActivity="true" />

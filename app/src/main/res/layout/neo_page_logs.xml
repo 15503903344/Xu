@@ -176,38 +176,6 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:visibility="gone" />
-
-            <!-- 浮动滚动按钮：滚到顶部 / 滚到底部（有日志时显示） -->
-            <LinearLayout
-                android:id="@+id/neo_logs_scroll_buttons"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="end|bottom"
-                android:layout_marginBottom="8dp"
-                android:layout_marginEnd="4dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:visibility="gone">
-
-                <ImageView
-                    android:id="@+id/neo_logs_scroll_top_btn"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:background="@drawable/neu_scroll_btn"
-                    android:contentDescription="@null"
-                    android:padding="8dp"
-                    android:src="@drawable/ic_neo_scroll_top" />
-
-                <ImageView
-                    android:id="@+id/neo_logs_scroll_bottom_btn"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:layout_marginStart="10dp"
-                    android:background="@drawable/neu_scroll_btn"
-                    android:contentDescription="@null"
-                    android:padding="8dp"
-                    android:src="@drawable/ic_neo_scroll_bottom" />
-            </LinearLayout>
             </FrameLayout>
 
             </LinearLayout>

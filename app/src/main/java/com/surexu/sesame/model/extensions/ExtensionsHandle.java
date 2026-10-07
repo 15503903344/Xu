@@ -1,5 +1,8 @@
 package com.surexu.sesame.model.extensions;
 
+import android.content.Context;
+import android.content.Intent;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -7,6 +10,7 @@ import java.util.Iterator;
 import java.util.Objects;
 
 import com.surexu.sesame.data.TokenConfig;
+import com.surexu.sesame.hook.ApplicationHook;
 import com.surexu.sesame.hook.Toast;
 import com.surexu.sesame.model.task.antSports.AntSportsRpcCall;
 import com.surexu.sesame.model.task.protectEcology.ProtectTreeRpcCall;
@@ -57,6 +61,9 @@ public class ExtensionsHandle {
                     SilentSwitchRotateAll.start();
                 }
                 break;
+            case "mockRequest":
+                mockRequest(fun, (String) data);
+                break;
         }
     }
 
@@ -72,6 +79,46 @@ public class ExtensionsHandle {
             return null;
         }
     }
+    /**
+     * 模拟请求：直接以传入的 mtop 接口 api/version/data 发一次真实请求（UI 服务页入口）。
+     * 请求结果写日志，并通过 com.surexu.sesame.mockRequestResult 广播回传给 UI 进程展示。
+     */
+    private static void mockRequest(String method, String data) {
+        try {
+            String result = ApplicationHook.requestString(method, data);
+            String display;
+            if (StringUtil.isEmpty(result)) {
+                display = "模拟请求[" + method + "] 返回为空（可能失败）";
+            } else if (result.length() > 2000) {
+                display = "模拟请求[" + method + "] 返回长度 " + result.length() + "，前 2000 字符:\n" + result.substring(0, 2000);
+            } else {
+                display = "模拟请求[" + method + "] 返回:\n" + result;
+            }
+            Log.record(display);
+            sendMockResult(method, result);
+        } catch (Throwable th) {
+            Log.err(TAG, "mockRequest err:", th);
+            sendMockResult(method, "模拟请求异常: " + th.getMessage());
+        }
+    }
+
+    private static void sendMockResult(String method, String result) {
+        try {
+            String replyResult = result;
+            if (replyResult != null && replyResult.length() > 10000) {
+                replyResult = replyResult.substring(0, 10000) + "\n...(已截断)";
+            }
+            Intent reply = new Intent("com.surexu.sesame.mockRequestResult");
+            reply.putExtra("method", method);
+            reply.putExtra("result", replyResult);
+            Context context = ApplicationHook.getContext();
+            if (context != null) {
+                context.sendBroadcast(reply);
+            }
+        } catch (Throwable ignore) {
+        }
+    }
+
     private static void getWateredItems() {
         Status.getWateredFriendToday();
     }
